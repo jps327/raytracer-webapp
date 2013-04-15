@@ -32,6 +32,7 @@ app.get('/', function(req, res){
 
 // MongoDB connection
 
+/*
 mongoose.connect('mongodb://localhost/distributed_raytracer');
 var Schema = mongoose.Schema,
     ObjectId = Schema.ObjectId;
@@ -46,6 +47,7 @@ var SceneSchema = new Schema({
 });
 
 var Scene = mongoose.model('Scene', SceneSchema);
+*/
 
 app.post('/api/createScene', function(req, res) {
   var scene = new Scene();
