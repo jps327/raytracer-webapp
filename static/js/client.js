@@ -32,7 +32,7 @@ Client = (function() {
   };
 
   // Client-server interaction
-  var socket = io.connect('http://localhost');
+  var socket = io.connect();
 
   var connectToScene = function() {
     socket.emit('connectToScene');

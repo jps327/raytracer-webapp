@@ -9,7 +9,6 @@ var mongoose = require('mongoose');
 
 // Configuration
 var port = 3000;
-var host = '127.0.0.1';
 var staticRoot = '/';
 
 app.configure(function() {
@@ -22,7 +21,7 @@ app.configure(function() {
   app.use(app.router);
 });
 
-server.listen(port, host);
+server.listen(port);
 
 // Routes
 
