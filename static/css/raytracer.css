@@ -1,0 +1,27 @@
+.control-group .controls .vector-component {
+  width: 30px;
+}
+
+.container .home .gallery {
+  margin: 0 auto;
+  margin-top: 15px;
+}
+
+.home .gallery .gallery-thumbnail .thumbnail {
+  padding: 0;
+}
+
+.home .gallery .gallery-thumbnail .gallery-img {
+  width: 100%;
+}
+
+.home .gallery .gallery-thumbnail .num-users-connected {
+  font-size: 12px;
+  font-style: italic;
+  margin-left: 5px;
+  vertical-align: bottom;
+}
+
+.home .gallery .gallery-thumbnail .user-count {
+  vertical-align: bottom;
+}

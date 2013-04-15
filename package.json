@@ -1,0 +1,17 @@
+{
+  "name": "raytracer",
+  "subdomain": "raytracer",
+  "scripts": {
+    "start": "app.js"
+  },
+  "version": "0.0.0",
+  "engines": {
+    "node": "0.8.x"
+  },
+  "dependencies": {
+    "express": "*",
+    "socket.io": "*",
+    "pngjs": "*",
+    "mongoose": "*"
+  }
+}

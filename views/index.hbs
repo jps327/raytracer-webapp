@@ -1,0 +1,308 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html class="fuelux" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>Ray Tracer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="{{ staticRoot }}css/common.css" type="text/css" />
+  <link rel="stylesheet" href="{{ staticRoot }}css/raytracer.css" type="text/css" />
+  <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/fuelux.min.css" />
+  <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/fuelux-responsive.min.css" />
+  <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/bootstrap-fileupload.min.css" />
+
+  <script type="text/javascript" src="{{ staticRoot }}lib/jquery.min.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}lib/underscore-min.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}lib/backbone-min.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}lib/fuelux.min.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}lib/bootstrap-fileupload.min.js"></script>
+
+  <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}js/router.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}js/main.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}js/raytracer.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}js/client.js"></script>
+</head>
+
+<body>
+  <div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+      <div class="container">
+        <a class="brand" href="#home">Distributed Ray Tracer</a>
+        <div role="button" data-toggle="modal" data-target="#createSceneModal"
+          class="btn btn-primary pull-right">Create A Scene</div>
+        <div class="nav-collapse collapse">
+          <ul class="nav">
+            <li class="nav-home"> <a href="#home">Home</a> </li>
+            <li class="nav-about"> <a href="#about">About</a> </li>
+            <li class="nav-contact"> <a href="#contact">Contact</a> </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="home">
+      <h1>Gallery</h1>
+
+      <div class="gallery row">
+        <ul class="gallery-thumbnails thumbnails"></ul>
+      </div>
+
+    </div>
+
+    <div class="about">
+      <h1>About</h1>
+      <p>
+      This is an awesome ray tracer filled with awesomeness.
+      All the work to render each scene is distributed over clients that choose
+      to help render it.
+      </p>
+      <p>
+      Developed by Juan Pablo Sarmiento, Cornell '13
+      </p>
+    </div>
+
+    <div class="contact">
+      <h1>Contact</h1>
+      <p>
+      <a href="mailto:jps327@cornell.edu" target="_blank">E-mail</a>
+      </p>
+      <p>
+      <a
+        href="https://www.facebook.com/juan.pablo.sarmiento"
+        target="_blank">Facebook</a>
+      </p>
+    </div>
+
+    <div class="scene">
+    </div>
+
+  </div>
+
+  <!-- Create Scene Modal-->
+  <script id="t-input-vector" type="text/template">
+    <div class="control-group">
+      <label class="control-label" for="cam<%= name %>"><%= name %></label>
+      <div class="controls">
+        <input type="text" id="cam<%= name %>" placeholder="x"
+        class="vector-component" value="<%= val.x %>" />
+        <input type="text" id="cam<%= name %>" placeholder="y"
+        class="vector-component" value="<%= val.y %>" />
+        <input type="text" id="cam<%= name %>" placeholder="z"
+        class="vector-component" value="<%= val.z %>" />
+        <span class="help-inline">Vector[x, y, z]</span>
+      </div>
+    </div>
+  </script>
+
+  <div id="createSceneModal" class="modal hide fade"
+    tabindex="-1" role="dialog"
+    aria-labelledby="createSceneModalLabel" aria-hidden="true"
+    data-backdrop="static">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"
+        aria-hidden="true">x</button>
+      <h3 id="createSceneModalLabel">Create A Scene</h3>
+    </div>
+    <div class="modal-body">
+      <ul id="createSceneTab" class="nav nav-tabs">
+        <li class="active"><a href="#thumbnail" data-toggle="tab">Thumbnail</a></li>
+        <li><a href="#properties" data-toggle="tab">Properties</a></li>
+        <li><a href="#materials" data-toggle="tab">Materials</a></li>
+        <li><a href="#objects" data-toggle="tab">Objects</a></li>
+      </ul>
+
+      <div class="tab-content">
+        <!-- Thumbnail Selection -->
+        <div class="thumbnail-tab tab-pane fade in active" id="thumbnail">
+          <p>
+          Upload an image to be used as a thumbnail in the gallery.
+          This image should give viewers an idea of the kind of scene you
+          want to render.
+          </p>
+          <form>
+            <fieldset>
+              <div class="fileupload fileupload-new" data-provides="fileupload">
+                <div class="fileupload-preview thumbnail" style="width: 300px; height: 200px;"></div>
+                <div>
+                  <span class="btn btn-file">
+                    <span class="fileupload-new">Select image</span>
+                    <span class="fileupload-exists">Change</span>
+                    <input type="file" />
+                  </span>
+                  <a href="#" class="btn fileupload-exists" data-dismiss="fileupload">Remove</a>
+                </div>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+
+        <!-- Scene Properties -->
+        <div class="scene-properties-tab tab-pane fade" id="properties">
+          <div class="sceneProperties accordion" id="scenePropertiesAccordion">
+            <div class="accordion-group">
+              <div class="accordion-heading">
+                <a class="accordion-toggle" data-toggle="collapse"
+                  data-parent="#scenePropertiesAccordion" href="#imageDimensions">Image Dimensions</a>
+              </div>
+              <div id="imageDimensions" class="accordion-body collapse in">
+                <div class="accordion-inner">
+                  <form class="form-horizontal">
+                    <fieldset>
+                      <div class="control-group">
+                        <label class="control-label" for="inputWidth">Width</label>
+                        <div class="controls">
+                          <input type="text" id="inputWidth" class="span1" value="400" />
+                        </div>
+                      </div>
+        
+                      <div class="control-group">
+                        <label class="control-label" for="inputHeight">Height</label>
+                        <div class="controls">
+                          <input type="text" id="inputHeight" class="span1" value="300" />
+                        </div>
+                      </div>
+                    </fieldset>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="accordion-group">
+              <div class="accordion-heading">
+                <a class="accordion-toggle" data-toggle="collapse"
+                  data-parent="#scenePropertiesAccordion" href="#camera">Camera</a>
+              </div>
+              <div id="camera" class="accordion-body collapse">
+                <div class="accordion-inner">
+                  <p>
+                  Specify the properties of the camera that will be used to render
+                  your scene. The default values are already good enough to render
+                  any scene you want.
+                  </p>
+
+                  <form class="form-horizontal">
+                    <fieldset>
+                      <script>
+                        document.write(_.template($("#t-input-vector").html())({
+                          name: 'Eye', val: {x: 0, y: 0, z: 1}}));
+                        document.write(_.template($("#t-input-vector").html())({
+                          name: 'View Direction', val: {x: 0, y: 0, z: -1}}));
+                        document.write(_.template($("#t-input-vector").html())({
+                          name: 'Up', val: {x: 0, y: 1, z: 0}}));
+                      </script>
+                      <div class="control-group">
+                        <label class="control-label" for="inputProjDist">
+                          Projection Distance
+                        </label>
+                        <div class="controls">
+                          <input type="text" id="inputProjDist"
+                            class="span1" value="1" />
+                        </div>
+                      </div>
+                    </fieldset>
+                  </form>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Material Creation -->
+        <div class="materials-tab tab-pane fade" id="materials">
+          <div class="pull-left">
+            <h5>Create a New Material</h5>
+            <form class="form-horizontal">
+              <fieldset>
+                <div class="control-group">
+                  <label class="control-label" for="inputMatName">
+                    Name
+                  </label>
+                  <div class="controls">
+                    <input type="text" id="inputMatName" class="span2" value="" />
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <label class="control-label" for="inputMatType">
+                    Type
+                  </label>
+                  <div class="controls">
+                    <div id="inputMatType" data-resize="auto"
+                      class="select btn-group material-select">
+                      <button data-toggle="dropdown" class="btn dropdown-toggle">
+                        <span class="dropdown-label"></span>
+                        <span class="caret"></span>
+                      </button>
+                      <ul class="materials-dropdown-box dropdown-menu"></ul>
+                    </div>
+                  </div>
+                </div>
+
+              </fieldset>
+            </form>
+          </div>
+          <div class="pull-right">
+            omg
+          </div>
+        </div>
+
+        <!-- Object Creation -->
+        <div class="objects-tab tab-pane fade" id="objects"> objects </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" data-dismiss="modal" aria-hidden="true">
+        Close
+      </button>
+      <button class="btn btn-primary">Done</button>
+    </div>
+  </div>
+
+  <script id="t-finished-image" type="text/template">
+    <img src="{{ staticRoot }}raytraced_images/<%= imageName %>"></img>
+  </script>
+
+  <script id="t-gallery-thumbnail" type="text/template">
+      <div class="gallery-thumbnail thumbnail">
+        <a href="#scene" class="thumbnail">
+          <img
+            src="{{ staticRoot }}img/300x200.png"
+            alt="300x200"
+            class="gallery-img"></img>
+        </a>
+        <div class="caption">
+          <h3><%= imageName %></h3>
+          <p><%= artistName %></p>
+          <p>
+            <div class="btn btn-primary connect">Connect</div>
+            <span class="num-users-connected">
+              <span class="user-count"><%= numUsersConnected %></span>
+              <% if (numUsersConnected == 1) { %> user
+                <% } else { %> users <% } %>
+              connected
+            </span>
+          </p>
+        </div>
+      </div>
+  </script>
+
+  <script id="t-scene" type="text/template">
+    <h1><%= sceneName %></h1>
+    <div class="finished-image-container">
+      <img src="{{ staticRoot }}img/loading_bar.gif"></img>
+    </div>
+  </script>
+
+  <script id="t-select-box-item" type="text/template">
+    <li data-value="<%= value %>"><a href="#"><%= label %></a></li>
+  </script>
+
+</body>
+
+</html>
