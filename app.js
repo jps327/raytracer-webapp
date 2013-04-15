@@ -26,7 +26,7 @@ server.listen(port);
 // Routes
 
 app.get('/', function(req, res){
-  res.render('raytracer', { staticRoot : staticRoot });
+  res.render('index', { staticRoot : staticRoot });
 });
 
 // MongoDB connection
