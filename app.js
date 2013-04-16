@@ -8,7 +8,7 @@ var path = require('path');
 var mongoose = require('mongoose');
 
 // Configuration
-var port = 3000;
+var port = process.env.PORT || 1337;
 var staticRoot = '/';
 
 app.configure(function() {
