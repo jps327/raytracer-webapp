@@ -25,3 +25,24 @@
 .home .gallery .gallery-thumbnail .user-count {
   vertical-align: bottom;
 }
+
+.createSceneModal .objects-tab .form-horizontal .control-label,
+.createSceneModal .materials-tab .form-horizontal .control-label {
+  width: 100px;
+}
+
+.createSceneModal .objects-tab .form-horizontal .controls,
+.createSceneModal .materials-tab .form-horizontal .controls {
+  margin-left: 120px;
+}
+
+.fuelux .colorpicker.dropdown-menu {
+  z-index: 1100;
+}
+
+.createSceneModal .objects-tab .added-objects-tree,
+.createSceneModal .materials-tab .added-materials-tree {
+  height: 190px;
+  margin-top: 20px;
+  width: 180px;
+}

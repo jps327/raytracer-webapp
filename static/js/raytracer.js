@@ -29,6 +29,12 @@ var RayTracer = (function() {
     }
   };
 
+  // checks if something is a number.
+  // E.g. "3" returns true. "abc" returns false.
+  var isNumber = function(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+  };
+
   // RayTracer Image class
   // (not to be confused with Javascript's built-in Image class)
   // Data structure holding the image information for a canvas element
@@ -605,7 +611,15 @@ var RayTracer = (function() {
     gray: function() { return new Color(0.5, 0.5, 0.5); },
     yellow: function() { return new Color(1, 1, 0); },
     background: function() { return new Color(0.02, 0.02, 0.02); },
-    clone: function(c) { return new Color(c.x, c.y, c.z) },
+    clone: function(c) { 
+      if (typeof c.x === 'undefined' &&
+        typeof c.y === 'undefined' &&
+        typeof c.z === 'undefined') {
+        return new Color(c.r, c.g, c.b);
+      } else {
+        return new Color(c.x, c.y, c.z);
+      }
+    },
   });
 
   // short hand creation of colors
@@ -1418,12 +1432,155 @@ var RayTracer = (function() {
 
   var sceneToRender = basicBoxTransformation;
 
+  // Go through an entire JSON object and turn all numeric strings to
+  // actual numbers
+  var sanitizeNumericJSON = function(jsonObject) {
+    for (var property in jsonObject) {
+      if (jsonObject.hasOwnProperty(property)) {
+        if (typeof jsonObject[property] === 'object') {
+          sanitizeNumericJSON(jsonObject[property]);
+        } else {
+          var value = jsonObject[property];
+          if (isNumber(value)) {
+            jsonObject[property] = parseFloat(value);
+          }
+        }
+      }
+    }
+  };
+
+  // Go through an entire JSON object and turn all vectors and colors
+  // to Vector and Color objects
+  var sanitizeVectorJSON = function(jsonObject) {
+    for (var property in jsonObject) {
+      if (jsonObject.hasOwnProperty(property)) {
+        if (typeof jsonObject[property] === 'object') {
+          var obj = jsonObject[property];
+          if (typeof obj.x !== 'undefined' &&
+              typeof obj.y !== 'undefined' &&
+              typeof obj.z !== 'undefined') {
+            jsonObject[property] = $V(obj.x, obj.y, obj.z);
+          } else if (typeof obj.r !== 'undefined' &&
+              typeof obj.g !== 'undefined' &&
+              typeof obj.b !== 'undefined') {
+            jsonObject[property] = $C(obj.r, obj.g, obj.b);
+          } else {
+            sanitizeVectorJSON(obj);
+          }
+        }
+      }
+    }
+  }
+
+  // Given a JSON material representation, turn it into a RayTracer Shader
+  var shaderFromJSON = function(jsonMat) {
+    switch (jsonMat.type) {
+      case 'lambertian':
+        return new Lambertian(jsonMat);
+      case 'phong':
+        return new Phong(jsonMat);
+      default:
+        return new Lambertian();
+    }
+  };
+
+  // Given a JSON surface representation, turn it into a RayTracer Surface
+  var surfaceFromJSON = function(jsonSurface, shaders) {
+    var surface = new Group();
+    if (jsonSurface.type === 'group') {
+      for (var i = 0; i < jsonSurface.objects.length; i++) {
+        var jsonObject = jsonSurface.objects[i];
+        // recursively turn each sub-object into a RayTracer Surface
+        var subSurface = surfaceFromJSON(jsonObject, shaders);
+        surface.addSurface(subSurface);
+      }
+    } else {
+      jsonSurface.shader = shaders[jsonSurface.shader];
+      switch (jsonSurface.type) {
+        case 'sphere':
+          surface.addSurface(new Sphere(jsonSurface));
+          break;
+        case 'box':
+          surface.addSurface(new Box(jsonSurface));
+          break;
+        default:
+          console.log("Invalid Surface Type: " + jsonSurface.type);
+          return;
+      }
+    }
+    surface
+      .setTranslate($V(jsonSurface.translate))
+      .setRotate($V(jsonSurface.rotate))
+      .setScale($V(jsonSurface.scale));
+    return surface;
+  };
+
+  // Given a JSON object representing a scene, turn it into a
+  // renderable Scene object
+  // JSON Scene needs: width, height, camera, lights list, materials map,
+  // and objects list
+  var createRenderableSceneFromJSON = function(jsonScene) {
+    sanitizeNumericJSON(jsonScene);
+    sanitizeVectorJSON(jsonScene);
+
+    // get jsonScene properties
+    var width = parseInt(jsonScene.width);
+    var height = parseInt(jsonScene.height);
+    var camera = jsonScene.camera;
+    var lights = jsonScene.lights;
+    var materials = jsonScene.materials;
+    var objects = jsonScene.objects;
+
+    // create new scene
+    var scene = new Scene();
+
+    // set its camera
+    // TODO: change Camera to use data object instead of individual arguments
+    scene.setCamera(new Camera(
+        camera.eye,
+        camera.viewDirection,
+        camera.up,
+        camera.projectionDistance,
+        camera.viewWidth,
+        camera.viewHeight
+      )
+    );
+
+    // add lights to the scene
+    for (var i = 0; i < lights.length; i++) {
+      var light = lights[i];
+      var intensity = light.intensity;
+      var position = light.position;
+      // TODO: change Light to use data object instead of individual arguments
+      scene.addLight(new Light(position, intensity));
+    }
+
+    // turn json material map to new map of materialName -> RayTracer Material
+    var shaders = {};
+    for (var materialName in materials) {
+      shaders[materialName] = shaderFromJSON(materials[materialName]);
+    }
+
+    // add surfaces to the scene
+    for (var i = 0; i < objects.length; i++) {
+      var surface = surfaceFromJSON(objects[i], shaders);
+      scene.addSurface(surface);
+    }
+
+    scene
+      .setImageDimensions(width, height)
+      .setTransform()
+      .initializeAABB(); // prepares scene for rendering
+    return scene;
+  };
+
   return {
     $V: $V,
     $C: $C,
     getSceneToRender: sceneToRender,
     renderPixel: renderPixel,
     renderImage: renderImage,
+    createRenderableSceneFromJSON: createRenderableSceneFromJSON,
     createScene: function() {
       return new Scene();
     },

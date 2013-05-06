@@ -9,14 +9,17 @@
   <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/fuelux.min.css" />
   <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/fuelux-responsive.min.css" />
   <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/bootstrap-fileupload.min.css" />
+  <link rel="stylesheet" media="screen" href="{{ staticRoot }}css/colorpicker.css" />
 
   <script type="text/javascript" src="{{ staticRoot }}lib/jquery.min.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}lib/underscore-min.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}lib/backbone-min.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}lib/fuelux.min.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}lib/bootstrap-fileupload.min.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}lib/bootstrap-colorpicker.js"></script>
 
   <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="{{ staticRoot }}js/init.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}js/router.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}js/main.js"></script>
   <script type="text/javascript" src="{{ staticRoot }}js/raytracer.js"></script>
@@ -29,7 +32,9 @@
       <div class="container">
         <a class="brand" href="#home">Distributed Ray Tracer</a>
         <div role="button" data-toggle="modal" data-target="#createSceneModal"
-          class="btn btn-primary pull-right">Create A Scene</div>
+          class="create-scene-button btn btn-primary pull-right">
+          Create A Scene
+        </div>
         <div class="nav-collapse collapse">
           <ul class="nav">
             <li class="nav-home"> <a href="#home">Home</a> </li>
@@ -83,20 +88,30 @@
   <!-- Create Scene Modal-->
   <script id="t-input-vector" type="text/template">
     <div class="control-group">
-      <label class="control-label" for="cam<%= name %>"><%= name %></label>
+      <label class="control-label" for="input<%= name %>"><%= name %></label>
       <div class="controls">
-        <input type="text" id="cam<%= name %>" placeholder="x"
+        <input type="text" id="input<%= name %>" placeholder="x"
         class="vector-component" value="<%= val.x %>" />
-        <input type="text" id="cam<%= name %>" placeholder="y"
+        <input type="text" id="input<%= name %>" placeholder="y"
         class="vector-component" value="<%= val.y %>" />
-        <input type="text" id="cam<%= name %>" placeholder="z"
+        <input type="text" id="input<%= name %>" placeholder="z"
         class="vector-component" value="<%= val.z %>" />
         <span class="help-inline">Vector[x, y, z]</span>
       </div>
     </div>
   </script>
 
-  <div id="createSceneModal" class="modal hide fade"
+  <script>
+    var writeVector = function(name, val) {
+      return _.template($('#t-input-vector').html())({
+        name: name,
+        val: {x: val.x, y: val.y, z: val.z}
+      });
+    };
+  </script>
+
+  <div id="createSceneModal"
+    class="createSceneModal modal hide fade"
     tabindex="-1" role="dialog"
     aria-labelledby="createSceneModalLabel" aria-hidden="true"
     data-backdrop="static">
@@ -141,6 +156,7 @@
         <!-- Scene Properties -->
         <div class="scene-properties-tab tab-pane fade" id="properties">
           <div class="sceneProperties accordion" id="scenePropertiesAccordion">
+            <!-- Image Dimensions -->
             <div class="accordion-group">
               <div class="accordion-heading">
                 <a class="accordion-toggle" data-toggle="collapse"
@@ -169,6 +185,7 @@
               </div>
             </div>
 
+            <!-- Camera -->
             <div class="accordion-group">
               <div class="accordion-heading">
                 <a class="accordion-toggle" data-toggle="collapse"
@@ -185,12 +202,9 @@
                   <form class="form-horizontal">
                     <fieldset>
                       <script>
-                        document.write(_.template($("#t-input-vector").html())({
-                          name: 'Eye', val: {x: 0, y: 0, z: 1}}));
-                        document.write(_.template($("#t-input-vector").html())({
-                          name: 'View Direction', val: {x: 0, y: 0, z: -1}}));
-                        document.write(_.template($("#t-input-vector").html())({
-                          name: 'Up', val: {x: 0, y: 1, z: 0}}));
+                        document.write(writeVector('Eye', {x: 0, y: 0, z: 1}));
+                        document.write(writeVector('View Direction', {x: 0, y: 0, z: -1}));
+                        document.write(writeVector('Up', {x: 0, y: 1, z: 0}));
                       </script>
                       <div class="control-group">
                         <label class="control-label" for="inputProjDist">
@@ -207,6 +221,38 @@
                 </div>
               </div>
             </div>
+
+
+            <!-- Lights -->
+            <div class="accordion-group">
+              <div class="accordion-heading">
+                <a class="accordion-toggle" data-toggle="collapse"
+                  data-parent="#scenePropertiesAccordion" href="#lights">Lights</a>
+              </div>
+              <div id="lights" class="accordion-body collapse">
+                <div class="accordion-inner">
+                  TODO: add lights
+                  <form class="form-horizontal">
+                    <fieldset>
+                      <div class="control-group">
+                        <label class="control-label" for="inputWidth">Width</label>
+                        <div class="controls">
+                          <input type="text" id="inputWidth" class="span1" value="400" />
+                        </div>
+                      </div>
+        
+                      <div class="control-group">
+                        <label class="control-label" for="inputHeight">Height</label>
+                        <div class="controls">
+                          <input type="text" id="inputHeight" class="span1" value="300" />
+                        </div>
+                      </div>
+                    </fieldset>
+                  </form>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -241,26 +287,68 @@
                   </div>
                 </div>
 
+                <div class="material-properties-form"></div>
+                <input type="button" class="add-material btn btn-primary"
+                  value="Add" />
+
               </fieldset>
             </form>
           </div>
-          <div class="pull-right">
-            omg
-          </div>
+
+          <div class="pull-right added-materials"></div>
         </div>
 
         <!-- Object Creation -->
-        <div class="objects-tab tab-pane fade" id="objects"> objects </div>
+        <div class="objects-tab tab-pane fade" id="objects">
+          <div class="pull-left">
+            <h5>Add an Object</h5>
+            <form class="form-horizontal">
+              <fieldset>
+                <div class="control-group">
+                  <label class="control-label" for="inputObjectName">
+                    Name
+                  </label>
+                  <div class="controls">
+                    <input type="text" id="inputObjectName" class="span2" value="" />
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <label class="control-label" for="inputObjectType">
+                    Type
+                  </label>
+                  <div class="controls">
+                    <div id="inputObjectType" data-resize="auto"
+                      class="select btn-group object-select">
+                      <button data-toggle="dropdown" class="btn dropdown-toggle">
+                        <span class="dropdown-label"></span>
+                        <span class="caret"></span>
+                      </button>
+                      <ul class="objects-dropdown-box dropdown-menu"></ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="object-properties-form"></div>
+                <input type="button" class="add-object btn btn-primary"
+                  value="Add" />
+
+              </fieldset>
+            </form>
+          </div>
+
+          <div class="pull-right added-objects"></div>
+        </div>
+        <!-- End Object Creation Tab -->
 
       </div>
-
     </div>
 
     <div class="modal-footer">
       <button class="btn" data-dismiss="modal" aria-hidden="true">
         Close
       </button>
-      <button class="btn btn-primary">Done</button>
+      <button class="btn-done btn btn-primary">Done</button>
     </div>
   </div>
 
@@ -280,7 +368,7 @@
           <h3><%= imageName %></h3>
           <p><%= artistName %></p>
           <p>
-            <div class="btn btn-primary connect">Connect</div>
+            <div class="btn btn-primary btn-connect">Connect</div>
             <span class="num-users-connected">
               <span class="user-count"><%= numUsersConnected %></span>
               <% if (numUsersConnected == 1) { %> user
@@ -302,6 +390,85 @@
   <script id="t-select-box-item" type="text/template">
     <li data-value="<%= value %>"><a href="#"><%= label %></a></li>
   </script>
+
+  <script id="t-item-folder-tree" type="text/template">
+    <div class="<%= className %> tree">
+      <div class="tree-folder" style="display:none;">
+        <div class="tree-folder-header">
+          <i class="icon-folder-close"></i>
+          <div class="tree-folder-name"></div>
+        </div>
+        <div class="tree-folder-content"></div>
+        <div class="tree-loader" style="display:none;"></div>
+      </div>
+
+      <div class="tree-item" style="display:none;">
+        <i class="tree-dot"></i>
+        <div class="tree-item-name"></div>
+      </div>
+    </div>
+  </script>
+
+  <script id="t-material-properties-form" type="text/template">
+    <% for (var id in properties) {
+      var property = properties[id];
+    %>
+      <div class="control-group">
+        <label class="control-label" for="<%= id %>">
+          <% print(property.label); %>
+        </label>
+        <div class="controls">
+          <% if (property.type === 'number') { %>
+            <input id="<%= id %>" type="text" class="span1" value="" >
+          <% } else if (property.type === 'color') { 
+            var startColor = "rgb(255, 146, 180)"; %>
+            <div class="colorpicker input-append color"
+              data-color="<%= startColor %>" data-color-format="rgb">
+              <input id="<%= id %>" type="text" class="span2" value="" readonly>
+              <span class="add-on">
+                <i style="background-color: <%= startColor %>"></i>
+              </span>
+            </div>
+          <% } %>
+        </div>
+
+      </div> 
+  <% } %>
+  </script>
+
+  <script id="t-object-properties-form" type="text/template">
+    <% for (var id in properties) {
+      var property = properties[id];
+    %>
+      <div class="control-group">
+        <label class="control-label" for="<%= id %>">
+          <%= property.label %>
+        </label>
+        <div class="controls">
+          <% if (property.type === 'number') { %>
+            <input id="<%= id %>" type="text" class="span1" value="" >
+          <% } else if (property.type === 'vector') { %>
+            <input type="text" id="<%= id %>" placeholder="x"
+              class="vector-component" />
+            <input type="text" id="<%= id %>" placeholder="y"
+              class="vector-component" />
+            <input type="text" id="<%= id %>" placeholder="z"
+              class="vector-component" />
+          <% } else if (property.type === 'material-select' && id !== 'group') { %>
+            <div id="<%= id %>" data-resize="auto"
+              class="select btn-group object-material-select">
+              <button data-toggle="dropdown" class="btn dropdown-toggle">
+                <span class="dropdown-label"></span>
+                <span class="caret"></span>
+              </button>
+              <ul class="object-materials-dropdown-box dropdown-menu"></ul>
+            </div>
+          <% } %>
+        </div>
+      </div>
+  <% } %>
+  </script>
+
 
 </body>
 

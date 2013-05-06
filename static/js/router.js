@@ -3,36 +3,6 @@
  * Date: March 2013
  */
 
-if (!Function.prototype.bind) {
-  // if the browser does not support function.bind(), then create our own
-  // because it's awesome and helpful and allows currying
-  Function.prototype.bind = function(oThis) {
-    if (typeof this !== "function") {
-      throw new TypeError("Function.prototype.bind - what is trying to be bound"
-         + " is not callable");
-    }
-    var aArgs = Array.prototype.slice.call(arguments, 1), 
-      fToBind = this, 
-      fNOP = function () {},
-      fBound = function () {
-        return fToBind.apply(
-          this instanceof fNOP &&
-          oThis ? this : oThis,
-          aArgs.concat(Array.prototype.slice.call(arguments))
-        );
-      };
-    fNOP.prototype = this.prototype;
-    fBound.prototype = new fNOP();
-    return fBound;
-  };
-}
-
-//Ensures there will be no 'console is undefined' errors
-window.console = window.console || (function(){
-    var c = {}; c.log = c.warn = c.debug = c.info = c.error = c.time = c.dir = c.profile = c.clear = c.exception = c.trace = c.assert = function(){};
-    return c;
-})();
-
 var Router = (function() {
   var loadedPage = false;
   var RayTracerRouter = Backbone.Router.extend({
