@@ -185,10 +185,7 @@ RTScene.prototype.areAllJobsComplete = function() {
 RTScene.prototype.broadcastFinishedImage = function() {
   for (var clientID in this.connectedClients) {
     var client = this.getClientByID(clientID);
-    client.socket.emit('finishedImage', {
-      sceneID: this.id,
-      filename: "result.png",
-    });
+    client.socket.emit('finishedImage', { sceneID: this.id, });
   }
 
   // TODO: remove scene from scenes map and clear memory
@@ -216,7 +213,6 @@ RTScene.prototype.createFinishedImage = function(sceneID) {
   }
 
   // Create PNG image
-  // TODO: should not be general "result.png" name anymore. use scene id.
   var ws = fs.createWriteStream(
         __dirname + "/static/raytraced_images/" + sceneID + ".png"
     );
@@ -311,7 +307,7 @@ io.sockets.on('connection', function(socket) {
       // we didn't assign a new job, so check if all jobs are done.
       if (scene.areAllJobsComplete()) {
         if (!scene.createdFinishedImage) {
-          scene.createFinishedImage();
+          scene.createFinishedImage(scene.id);
         }
       }
     }

@@ -16,7 +16,7 @@ var Router = (function() {
       "home" : "home",
       "about" : "about",
       "contact" : "contact",
-      "scene" : "scene",
+      "scene/:id" : "scene",
     },
 
     goToRoot: function() {
@@ -50,10 +50,10 @@ var Router = (function() {
       this.switchPage(this.CONTACT);
     },
 
-    scene: function() {
+    scene: function(sceneID) {
       this.switchPage(this.SCENE);
       $(function() {
-        Main.getCurrentView().render();
+        Main.getCurrentView().loadData(sceneID);
       });
     },
 

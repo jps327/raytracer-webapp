@@ -26,7 +26,7 @@ Client = (function() {
     // we want to connect to this scene.
     $.ajax({
       type: 'POST',
-      url: '/api/getScene',
+      url: '/api/getSceneRenderingData',
       data: {
         sceneID: sceneID
       },
@@ -94,9 +94,30 @@ Client = (function() {
     });
   });
 
-  socket.on('finishedImage', function(imageFileName) {
+  socket.on('finishedImage', function(data) {
     // TODO: display the finished image correctly
+    // if i am in gallery view, i want the gallery item to update immediately
+    // i want the gallery items to refresh every 5 seconds as well
+    // if i am in scene view, i want the scene to update immediately
+    // otherwise request the scene filename every time we enter it to see if
+    // it is ready
+    var sceneID = data.sceneID;
+    var imageFileName = sceneID + ".png";
+
     Main.getView(Router.SCENE).displayFinishedImage(imageFileName);
+
+    var currentView = Main.getCurrentView();
+    // if we are either in Home view or Scene view, then update the 
+    // gallery item or scene image immediately.
+    if (currentView.id === Router.HOME) {
+      // update gallery item image
+      var galleryItems = Main.getGalleryItems();
+      var item = galleryItems.get(sceneID);
+      item.set({thumbnail: "raytraced_images/" + sceneID + ".png"});
+      console.log(item);
+    } else if (currentView.id === Router.SCENE) {
+
+    }
     console.log("FINISHED IMAGE");
   });
 

@@ -12,7 +12,14 @@
 }
 
 .home .gallery .gallery-thumbnail .gallery-img {
-  width: 100%;
+  background-position-y: -1px;
+  background-repeat: no-repeat;
+  background-size: 288px 201px;
+  border-radius: 4px;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  height: 200px;
+  width: 288px;
 }
 
 .home .gallery .gallery-thumbnail .num-users-connected {

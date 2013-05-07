@@ -6,10 +6,35 @@
 Main = (function() {
   var mainViews = {};
   var currentView = Router.HOME;
+  var selectedScene = null; // the scene we are viewing
 
-  var GalleryItem = Backbone.Model.extend({ idAttribute: '_id' });
+  var Scene = Backbone.Model.extend({
+    idAttribute: '_id',
+    initialize: function() {
+      this.set({ filename: this.id + ".png"});
+    },
+  });
+
+  var GalleryItem = Backbone.Model.extend({
+    idAttribute: '_id',
+    initialize: function() {
+      var thumbnailFilename = this.get('finishedRendering') ?
+        "raytraced_images/" + this.id + ".png" :
+        "thumbnail_images/" + this.id + ".png";
+      this.set({ thumbnail: thumbnailFilename});
+    },
+  });
+
   var GalleryItemCollection = Backbone.Collection.extend({ model: GalleryItem });
   var gallery = new GalleryItemCollection;
+
+  var getSelectedScene = function() {
+    return selectedScene;
+  };
+
+  var getGalleryItems = function() {
+    return gallery;
+  };
 
   var getCurrentViewID = function() {
     return currentView;
@@ -424,14 +449,28 @@ Main = (function() {
         return this;
       },
 
-      render: function() {
+      loadData: function(sceneID) {
+        $.ajax({
+          type: 'POST',
+          url: '/api/getSceneInfo',
+          data: {
+            sceneID: sceneID
+          },
+          success: (function(res) {
+            selectedScene = new Scene(res.scene);
+            this.render();
+          }).bind(this),
+          error: function(res) {
+            // TODO: resent request on error, or depends on the error
+          },
+          timeout: 5000
+        });
+      },
+
+      render: function(sceneID) {
         this.$el.html(this.template({
-          sceneName: "Simple Box"
+          scene: selectedScene.toJSON(),
         })); 
-
-        // TODO: this should happen only when the connect button is clicked
-        Client.connectToScene();
-
         return this;
       },
     });
@@ -440,18 +479,25 @@ Main = (function() {
       tagName: 'li',
       template: _.template($('#t-gallery-thumbnail').html()),
       events: {
-        "click .btn-connect" : "onConnectClick"
+        "click .btn-connect" : "onConnectClick",
       },
       connected: false,
 
-      initialize: function() {
+      initialize: function(options) {
+        this.model.on('change:thumbnail', this.onChangeThumbnail, this);
+        this.render();
+      },
+
+      onChangeThumbnail: function() {
         this.render();
       },
 
       render: function() {
         this.$el.addClass('span4');
         this.$el.html(this.template({
-          imageName: this.model.get('title'),
+          sceneID: this.model.id,
+          sceneThumbnail: this.model.get('thumbnail'),
+          sceneName: this.model.get('title'),
           artistName: this.model.get('author'),
           numUsersConnected: this.model.get('numUsersConnected'),
         }));
@@ -524,6 +570,8 @@ Main = (function() {
   };
 
   return {
+    getGalleryItems: getGalleryItems,
+    getSelectedScene: getSelectedScene,
     getView: getView,
     getCurrentView: getCurrentView,
     switchToView: switchToView,

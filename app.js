@@ -222,6 +222,7 @@ var getUserInfo = function(req, res, accessToken, userID, isNewUser) {
     });
 };
 
+// Adds a scene to the DB
 app.post('/api/createScene', function(req, res) {
   var scene = req.param('scene');
 
@@ -252,9 +253,12 @@ app.post('/api/createScene', function(req, res) {
   });
 });
 
+// TODO: implement pagination
+// gets the basic info for all scenes (title, author, numUsersConnected, and
+// whether or not the scene has finished rendering)
 app.post('/api/getScenes', function(req, res) {
   var query = Scene.find();
-  query.select({ title: 1, author: 1, numUsersConnected: 1 });
+  query.select({title: 1, author: 1, numUsersConnected: 1, finishedRendering: 1});
   query.exec(function(err, scenes) {
     if (err) {
       error(res);
@@ -264,17 +268,35 @@ app.post('/api/getScenes', function(req, res) {
   });
 });
 
-app.post('/api/getScene', function(req, res) {
+// Returns information about the scene, e.g. title, author, filename, etc.
+app.post('/api/getSceneInfo', function(req, res) {
   var sceneID = req.param('sceneID');
   Scene
     .findOne({ '_id': sceneID })
+    .select({title: 1, author: 1, numUsersConnected: 1, finishedRendering: 1})
     .exec(function(err, scene) {
       if (err || !scene) {
         console.log("Could not find scene.");
         error(res);
       } else {
         success(res, {scene: scene});
-      };
+      }
+    });
+});
+
+// Returns the scene rendering data (e.g. materials, objects, lights, etc.)
+app.post('/api/getSceneRenderingData', function(req, res) {
+  var sceneID = req.param('sceneID');
+  Scene
+    .findOne({ '_id': sceneID })
+    .select({width: 1, height: 1, camera: 1, lights: 1, materials: 1, objects: 1})
+    .exec(function(err, scene) {
+      if (err || !scene) {
+        console.log("Could not find scene.");
+        error(res);
+      } else {
+        success(res, { scene: scene });
+      }
     });
 });
 

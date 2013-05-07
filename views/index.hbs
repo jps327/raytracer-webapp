@@ -358,14 +358,13 @@
 
   <script id="t-gallery-thumbnail" type="text/template">
       <div class="gallery-thumbnail thumbnail">
-        <a href="#scene" class="thumbnail">
-          <img
-            src="{{ staticRoot }}img/300x200.png"
-            alt="300x200"
-            class="gallery-img"></img>
+        <a href="#scene/<%= sceneID %>" class="thumbnail">
+          <div
+            style="background-image: url('{{ staticRoot }}<%= sceneThumbnail %>');"
+            class="gallery-img"></div>
         </a>
         <div class="caption">
-          <h3><%= imageName %></h3>
+          <h3><%= sceneName %></h3>
           <p><%= artistName %></p>
           <p>
             <div class="btn btn-primary btn-connect">Connect</div>
@@ -381,10 +380,12 @@
   </script>
 
   <script id="t-scene" type="text/template">
-    <h1><%= sceneName %></h1>
+    <h1><%= scene.title %></h1>
+    <h4>by <%= scene.author %></h4>
     <div class="finished-image-container">
       <img src="{{ staticRoot }}img/loading_bar.gif"></img>
     </div>
+    <p><%= scene.numUsersConnected %> users connected</p>
   </script>
 
   <script id="t-select-box-item" type="text/template">
