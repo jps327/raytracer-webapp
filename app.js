@@ -244,7 +244,7 @@ app.post('/api/createScene', function(req, res) {
   sceneObj.save(function(err) {
     if (!err) {
       // scene has been created, so it is now ready for job scheduling
-      scheduling.addScene(sceneObj._id, sceneObj.height, sceneObj.width);
+      scheduling.addScene(sceneObj._id, sceneObj.width, sceneObj.height);
       success(res);
     } else {
       console.log(err);

@@ -243,7 +243,7 @@ RTScene.prototype.createFinishedImage = function(sceneID) {
 
 // Schedule a scene to be rendered. It'll start once clients start connecting.
 var addScene = function(sceneID, width, height) {
-  var scene  = new RTScene(sceneID, width, height);
+  var scene = new RTScene(sceneID, width, height);
   // split the scene into jobs, push them to the queue
   scene.createJobs();
   scene.pushAllJobsToQueue();
@@ -260,6 +260,11 @@ io.sockets.on('connection', function(socket) {
   socket.on('connectToScene', function(data) {
     var userAcid = data.acid;
     var rtScene = scenes[data.sceneID];
+    if (!rtScene) {
+      console.log("Scene " + data.sceneID + " is no longer scheduled for work.");
+      // TODO: tell user that the scene is no longer available for connection
+      return;
+    }
 
     console.log("Starting connection for user " + userAcid);
 
@@ -268,7 +273,6 @@ io.sockets.on('connection', function(socket) {
       .exec(function(err, dbScene) {
         if (err || !dbScene) {
           console.log("Could not find scene");
-          error(res);
         } else {
           if (!dbScene.startedRendering) {
             dbScene.startedRendering = true;
@@ -290,7 +294,6 @@ io.sockets.on('connection', function(socket) {
               // TODO: emit to the client that there was an error, so
               // the button doesn't change to 'Connected'
               console.log(err);
-              error(res);
             }
           });
         }
@@ -302,6 +305,11 @@ io.sockets.on('connection', function(socket) {
   socket.on('registeredClient', function(data) {
     var clientID = data.clientID;
     var scene = scenes[data.sceneID];
+    if (!scene) {
+      console.log("Scene " + data.sceneID + " is no longer scheduled for work.");
+      // TODO: tell user that the scene is no longer available for connection
+      return;
+    }
 
     console.log("Client registered (" + clientID +
       ") for scene [" + data.sceneID + "]");
@@ -314,6 +322,12 @@ io.sockets.on('connection', function(socket) {
     var scene = scenes[data.sceneID];
     var jobID = data.jobID;
     var pixels = data.pixels;
+
+    if (!scene) {
+      console.log("Scene " + data.sceneID + " is no longer scheduled for work.");
+      // TODO: tell user that the scene is no longer available for connection
+      return;
+    }
 
     // store results
     scene.storeJobResults(jobID, pixels);

@@ -1567,6 +1567,7 @@ var RayTracer = (function() {
       scene.addSurface(surface);
     }
 
+    console.log("Width: " + width + ", " + "Height: " + height);
     scene
       .setImageDimensions(width, height)
       .setTransform()

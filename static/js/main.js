@@ -7,6 +7,8 @@ Main = (function() {
   var mainViews = {};
   var currentView = Router.HOME;
   var selectedScene = null; // the scene we are viewing
+  var syncGalleryTimer = null;
+  var GALLERY_REFRESH_TIME = 10000; // refresh the gallery every 10 seconds
 
   var Scene = Backbone.Model.extend({
     idAttribute: '_id',
@@ -50,6 +52,15 @@ Main = (function() {
 
   var switchToView = function(id) {
     mainViews[id].switchToThisView();
+  };
+
+  var syncGallery = function() {
+    if (getCurrentView().id === Router.HOME) {
+      getCurrentView().getGalleryView().refreshGalleryData();
+    } else {
+      clearTimeout(syncGalleryTimer);
+      syncGalleryTimer = setTimeout(syncGallery, GALLERY_REFRESH_TIME);
+    }
   };
 
   var init = function() {
@@ -536,7 +547,7 @@ Main = (function() {
       },
 
       render: function() {
-        this.loadData();
+        this.refreshGalleryData();
         return this;
       },
 
@@ -552,7 +563,7 @@ Main = (function() {
         galleryThumbnails.append(container);
       },
 
-      loadData: function() {
+      refreshGalleryData: function() {
         $.ajax({
           type: 'POST',
           url: 'api/getScenes',
@@ -561,6 +572,10 @@ Main = (function() {
             console.log("getScenes Success");
             gallery.reset(res.scenes);
           }).bind(this),
+          complete: function() {
+            clearTimeout(syncGalleryTimer);
+            syncGalleryTimer = setTimeout(syncGallery, GALLERY_REFRESH_TIME);
+          },
         });
       },
     });
