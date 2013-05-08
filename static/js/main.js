@@ -11,17 +11,17 @@ Main = (function() {
   var Scene = Backbone.Model.extend({
     idAttribute: '_id',
     initialize: function() {
-      this.set({ filename: this.id + ".png"});
+      this.set({ imageSrc : "../raytraced_images/" + this.id + ".png"});
     },
   });
 
   var GalleryItem = Backbone.Model.extend({
     idAttribute: '_id',
     initialize: function() {
-      var thumbnailFilename = this.get('finishedRendering') ?
-        "raytraced_images/" + this.id + ".png" :
-        "thumbnail_images/" + this.id + ".png";
-      this.set({ thumbnail: thumbnailFilename});
+      var thumbnailSrc = this.get('finishedRendering') ?
+        "../raytraced_images/" + this.id + ".png" :
+        "../thumbnail_images/" + this.id + ".png";
+      this.set({ thumbnail: thumbnailSrc });
     },
   });
 
@@ -132,6 +132,7 @@ Main = (function() {
       },
 
       onAddClick: function(event) {
+        // TODO: gather data from inputs
         this.addedObjects.push({ name: 'Test', type: 'item', additional: 'param' });
         this.renderTree();
       },
@@ -438,13 +439,16 @@ Main = (function() {
       el: $('.scene'),
       template: _.template($('#t-scene').html()),
       id: Router.SCENE,
+      initialize: function() {
+        SceneView.__super__.initialize.apply(this, arguments);
+      },
 
       displayFinishedImage: function(imageFileName) {
         var imgTemplate = _.template($('#t-finished-image').html());
         var imgContainer = this.$('.finished-image-container');
         imgContainer.empty();
         imgContainer.html(imgTemplate({
-          imageName: imageFileName
+          imgSrc : selectedScene.get('imageSrc')
         }));
         return this;
       },
@@ -471,6 +475,10 @@ Main = (function() {
         this.$el.html(this.template({
           scene: selectedScene.toJSON(),
         })); 
+
+        if (selectedScene.get('finishedRendering')) {
+          this.displayFinishedImage();
+        }
         return this;
       },
     });
@@ -494,13 +502,7 @@ Main = (function() {
 
       render: function() {
         this.$el.addClass('span4');
-        this.$el.html(this.template({
-          sceneID: this.model.id,
-          sceneThumbnail: this.model.get('thumbnail'),
-          sceneName: this.model.get('title'),
-          artistName: this.model.get('author'),
-          numUsersConnected: this.model.get('numUsersConnected'),
-        }));
+        this.$el.html(this.template({ scene: this.model.toJSON() }));
         return this;
       },
 

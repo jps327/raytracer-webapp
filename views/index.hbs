@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html class="fuelux" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
-  <title>Ray Tracer</title>
+  <title>Cloud Ray Tracer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="{{ staticRoot }}css/common.css" type="text/css" />
@@ -30,7 +30,7 @@
   <div class="navbar navbar-inverse navbar-fixed-top">
     <div class="navbar-inner">
       <div class="container">
-        <a class="brand" href="#home">Distributed Ray Tracer</a>
+        <a class="brand" href="#home">Cloud Ray Tracer</a>
         <div role="button" data-toggle="modal" data-target="#createSceneModal"
           class="create-scene-button btn btn-primary pull-right">
           Create A Scene
@@ -353,30 +353,32 @@
   </div>
 
   <script id="t-finished-image" type="text/template">
-    <img src="{{ staticRoot }}raytraced_images/<%= imageName %>"></img>
+    <img src="<%= imgSrc %>"></img>
   </script>
 
   <script id="t-gallery-thumbnail" type="text/template">
-      <div class="gallery-thumbnail thumbnail">
-        <a href="#scene/<%= sceneID %>" class="thumbnail">
-          <div
-            style="background-image: url('{{ staticRoot }}<%= sceneThumbnail %>');"
-            class="gallery-img"></div>
-        </a>
-        <div class="caption">
-          <h3><%= sceneName %></h3>
-          <p><%= artistName %></p>
+    <div class="gallery-thumbnail thumbnail">
+      <a href="#scene/<%= scene._id %>" class="thumbnail">
+        <div
+          style="background-image: url('<%= scene.thumbnail %>');"
+          class="gallery-img"></div>
+      </a>
+      <div class="caption">
+        <h3><%= scene.title %></h3>
+        <p><%= scene.author %></p>
+        <% if (!scene.finishedRendering) { %>
           <p>
             <div class="btn btn-primary btn-connect">Connect</div>
             <span class="num-users-connected">
               <span class="user-count"><%= numUsersConnected %></span>
-              <% if (numUsersConnected == 1) { %> user
-                <% } else { %> users <% } %>
+              <% if (scene.numUsersConnected == 1) { %> user
+              <% } else { %> users <% } %>
               connected
             </span>
           </p>
-        </div>
+        <% } %>
       </div>
+    </div>
   </script>
 
   <script id="t-scene" type="text/template">
@@ -385,7 +387,9 @@
     <div class="finished-image-container">
       <img src="{{ staticRoot }}img/loading_bar.gif"></img>
     </div>
-    <p><%= scene.numUsersConnected %> users connected</p>
+    <% if (!scene.finishedRendering) { %>
+      <p><%= scene.numUsersConnected %> users connected</p>
+    <% } %>
   </script>
 
   <script id="t-select-box-item" type="text/template">

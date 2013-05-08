@@ -98,6 +98,7 @@ RTScene.prototype.addClient = function(userAcid, socket, callback) {
 
 RTScene.prototype.removeClient = function(clientID) {
   if (this.connectedClients[clientID]) {
+    this.connectedClients[clientID] = undefined;
     delete this.connectedClients[clientID];
   }
 };
@@ -183,13 +184,29 @@ RTScene.prototype.areAllJobsComplete = function() {
 };
 
 RTScene.prototype.broadcastFinishedImage = function() {
-  for (var clientID in this.connectedClients) {
-    var client = this.getClientByID(clientID);
-    client.socket.emit('finishedImage', { sceneID: this.id, });
-  }
+  // Write to DB that the image is complete
+  Scene
+    .findOne({'_id': this.id})
+    .exec((function(err, dbScene) {
+      if (err || !dbScene) {
+        console.log("Could not find scene to write that rendering completed.");
+      } else {
+        dbScene.finishedRendering = true;
+        dbScene.save((function(err) {
+          if (err) {
+            console.log("Error writing that scene finished rendering.");
+          } else {
+            for (var clientID in this.connectedClients) {
+              var client = this.getClientByID(clientID);
+              client.socket.emit('finishedImage', { sceneID: this.id, });
+            }
+          }
+        }).bind(this));
+      }
+    }).bind(this));
 
-  // TODO: remove scene from scenes map and clear memory
-  // TODO: add filename to DB so image can be found later
+  scenes[this.id] = undefined;
+  delete scenes[this.id];
 };
 
 RTScene.prototype.createFinishedImage = function(sceneID) {

@@ -102,21 +102,17 @@ Client = (function() {
     // otherwise request the scene filename every time we enter it to see if
     // it is ready
     var sceneID = data.sceneID;
-    var imageFileName = sceneID + ".png";
 
-    Main.getView(Router.SCENE).displayFinishedImage(imageFileName);
-
-    var currentView = Main.getCurrentView();
-    // if we are either in Home view or Scene view, then update the 
-    // gallery item or scene image immediately.
-    if (currentView.id === Router.HOME) {
       // update gallery item image
-      var galleryItems = Main.getGalleryItems();
-      var item = galleryItems.get(sceneID);
-      item.set({thumbnail: "raytraced_images/" + sceneID + ".png"});
-      console.log(item);
-    } else if (currentView.id === Router.SCENE) {
+    var galleryItems = Main.getGalleryItems();
+    var item = galleryItems.get(sceneID);
+    item.set({
+      finishedRendering: true,
+      thumbnail: "raytraced_images/" + sceneID + ".png"
+    });
 
+    if (Main.getCurrentView().id === Router.SCENE) {
+      Main.getCurrentView().displayFinishedImage();
     }
     console.log("FINISHED IMAGE");
   });
