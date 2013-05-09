@@ -108,7 +108,7 @@ Client = (function() {
     var item = galleryItems.get(sceneID);
     item.set({
       finishedRendering: true,
-      thumbnail: "raytraced_images/" + sceneID + ".png"
+      thumbnailURL: "../raytraced_images/" + sceneID + ".png"
     });
 
     if (Main.getCurrentView().id === Router.SCENE) {

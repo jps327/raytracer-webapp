@@ -7,8 +7,6 @@ Main = (function() {
   var mainViews = {};
   var currentView = Router.HOME;
   var selectedScene = null; // the scene we are viewing
-  var syncGalleryTimer = null;
-  var GALLERY_REFRESH_TIME = 10000; // refresh the gallery every 10 seconds
 
   var Scene = Backbone.Model.extend({
     idAttribute: '_id',
@@ -20,10 +18,9 @@ Main = (function() {
   var GalleryItem = Backbone.Model.extend({
     idAttribute: '_id',
     initialize: function() {
-      var thumbnailSrc = this.get('finishedRendering') ?
-        "../raytraced_images/" + this.id + ".png" :
-        "../thumbnail_images/" + this.id + ".png";
-      this.set({ thumbnail: thumbnailSrc });
+      if (this.get('finishedRendering')) {
+        this.set({ thumbnailURL: "../raytraced_images/" + this.id + ".png" });
+      }
     },
   });
 
@@ -54,15 +51,6 @@ Main = (function() {
     mainViews[id].switchToThisView();
   };
 
-  var syncGallery = function() {
-    if (getCurrentView().id === Router.HOME) {
-      getCurrentView().getGalleryView().refreshGalleryData();
-    } else {
-      clearTimeout(syncGalleryTimer);
-      syncGalleryTimer = setTimeout(syncGallery, GALLERY_REFRESH_TIME);
-    }
-  };
-
   var init = function() {
     var TreeDataSource = function(dataList) {
       this._data = dataList;
@@ -75,15 +63,133 @@ Main = (function() {
       },
     };
 
+    // Base View for the ObjectCreator and MaterialCreator Views
+    var BaseCreatorView = Backbone.View.extend({
+      selectedItem: "", // what item type we've currently selected
+
+      initialize: function(options) {
+        this.creatorType = options.creatorType;
+      },
+
+      getAddedItems: function() {
+        return this.addedItems;
+      },
+
+      isObjectCreator: function() {
+        return this.creatorType === 'object';
+      },
+
+      isMaterialCreator: function() {
+        return this.creatorType === 'material';
+      },
+
+      parseRGBString: function(str) {
+        var rgb = str.substring(4, str.length-1).split(',');
+        rgb = _.map(rgb, function(n) { return parseFloat(n) / 255; });
+        return {r: rgb[0], g: rgb[1], b: rgb[2]};
+      },
+
+      gatherVectorInput: function(id) {
+        return {
+          x: this.$("#" + id + "-x").val(),
+          y: this.$("#" + id + "-y").val(),
+          z: this.$("#" + id + "-z").val(),
+        };
+      },
+
+      render: function() {
+        if (this.creatorType !== 'light') {
+          // Lights don't have multiple item types, so we don't need to render
+          // the selcectors. We have to do this for objects and materials.
+          var selectBoxItem = _.template($('#t-select-box-item').html());
+          var dropdownMenu = this.$("."+this.creatorType+"s-dropdown-box");
+          dropdownMenu.empty();
+          for (var itemTypeName in this.itemTypes) {
+            dropdownMenu.append(selectBoxItem({
+              value: itemTypeName,
+              label: this.itemTypes[itemTypeName].label
+            }));
+          }
+
+          // Start off by selecting the first item
+          var selectBox = this.$("."+this.creatorType+"-select");
+          selectBox.select('selectByIndex', 0);
+          if (this.isObjectCreator()) {
+            this.onObjectSelect(null, selectBox.select('selectedItem'));
+          } else {
+            this.onMaterialSelect(null, selectBox.select('selectedItem'));
+          }
+        } else if (this.creatorType === 'light') {
+          this.$('.light-colorpicker').colorpicker();
+        }
+
+        this.renderTree();
+        return this;
+      },
+
+      renderTree: function() {
+        var addedItemsEl = this.$(".added-"+this.creatorType+"s");
+        var treeClass = "added-"+this.creatorType+"s-tree";
+        var treeTemplate = _.template($('#t-item-folder-tree').html());
+        addedItemsEl.empty();
+        addedItemsEl.html(treeTemplate({ className: treeClass }));
+        this.$("." + treeClass).tree({
+          dataSource: new TreeDataSource(this.addedItems),
+        });
+
+        return this;
+      },
+    });
+
+    // View for the Lights tab in the Create Scene modal dialog
+    // This is more straightforward than ObjectCreator and MaterialCreatorView
+    // because lights don't have multiple types, so we don't need to keep track
+    // of the possible types and their properties
+    var LightCreatorView = BaseCreatorView.extend({
+      el: $('.lights-tab'),
+      addedItems: [],
+
+      events: {
+        'click .add-light' : 'onAddClick',
+      },
+
+      initialize: function() {
+        LightCreatorView.__super__.initialize.apply(this, arguments);
+        this.render();
+      },
+
+      onAddClick: function(event) {
+        var light = {};
+        light.name = this.$('#inputLightName').val();
+        light.position = this.gatherVectorInput('inputLightPos');
+
+        var color = this.parseRGBString(this.$('#inputLightColor').val());
+        var intensity = parseFloat(this.$('#inputLightIntensity').val());
+        light.intensity = {
+          r: color.r * intensity,
+          g: color.g * intensity,
+          b: color.b * intensity
+        };
+        this.addedItems.push({
+          name: light.name,
+          type: 'item',
+          light: light
+        });
+        this.renderTree();
+      },
+    });
+
     // View for the Objects tab in the Create Scene modal dialog
-    var ObjectCreatorView = Backbone.View.extend({
+    var ObjectCreatorView = BaseCreatorView.extend({
       el: $('.objects-tab'),
+      addedItems: [],
+
       events: {
         'changed .object-select' : 'onObjectSelect',
         'click .add-object' : 'onAddClick',
       },
 
-      objects: {
+      itemTypes: {
         group: {
           label: 'Group',
           properties: { },
@@ -91,70 +197,69 @@ Main = (function() {
         sphere: {
           label: 'Sphere',
           properties: {
-            center: {label: 'Center', type: 'vector'},
-            radius: {label: 'Radius', type: 'number'},
+            center: {label: 'Center', type: 'vector', val: {x:0, y:0, z:0}},
+            radius: {label: 'Radius', type: 'number', val: 1},
           }
         },
         box: {
           label: 'Box',
           properties: {
-            minPt: {label: 'Min Point', type: 'vector'},
-            maxPt: {label: 'Max Point', type: 'vector'},
+            minPt: {label: 'Min Point', type: 'vector', val: {x:-0.5,y:-0.5,z:-0.5}},
+            maxPt: {label: 'Max Point', type: 'vector', val: {x:0.5,y:0.5,z:0.5}},
           }
         },
       },
 
-      addedObjects: [],
       initialize: function() {
+        ObjectCreatorView.__super__.initialize.apply(this, arguments);
         this.render();
-      },
-
-      getAddedObjects: function() {
-        return this.addedObjects;
       },
 
       getMaterialsTab: function() {
         return mainViews[Router.HOME].getCreateSceneDialog().getMaterialsTab();
       },
 
-      render: function() {
-        var selectBoxItem = _.template($('#t-select-box-item').html());
-        var dropdownMenu = this.$('.objects-dropdown-box');
-        dropdownMenu.empty();
-        for (var objectName in this.objects) {
-          dropdownMenu.append(selectBoxItem({
-            value: objectName,
-            label: this.objects[objectName].label
-          }));
-        }
-        this.renderTree();
-
-        return this;
-      },
-
-      renderTree: function() {
-        var addedObjectsEl = this.$('.added-objects');
-        var treeTemplate = _.template($('#t-item-folder-tree').html());
-        addedObjectsEl.empty();
-        addedObjectsEl.html(treeTemplate({ className: 'added-objects-tree' }));
-        this.$('.added-objects-tree').tree({
-          dataSource: new TreeDataSource(this.addedObjects),
-        });
-      },
-
       onAddClick: function(event) {
-        // TODO: gather data from inputs
-        this.addedObjects.push({ name: 'Test', type: 'item', additional: 'param' });
+        var object = {};
+        object.name = this.$('#inputObjectName').val();
+        object.type = this.selectedItem;
+
+        // gather properties
+        var objectProperties = this.itemTypes[this.selectedItem].properties;
+        for (var propertyName in objectProperties) {
+          var property = objectProperties[propertyName];
+          if (property.type === 'vector') {
+            object[propertyName] = this.gatherVectorInput(propertyName);
+          } else if (property.type === 'material-select') {
+            object[propertyName] = this.$("#" + propertyName)
+              .select('selectedItem').value;
+          } else {
+            object[propertyName] = this.$("#" + propertyName).val();
+          }
+        }
+
+        // gather transformations
+        var scaleVal = this.$('#scale').val()
+        object.scale = {x: scaleVal, y: scaleVal, z: scaleVal};
+        object.rotate = this.gatherVectorInput('rotate');
+        object.translate = this.gatherVectorInput('translate');
+
+        this.addedItems.push({
+          name: object.name,
+          type: 'item',
+          object: object
+        });
         this.renderTree();
       },
 
       onObjectSelect: function(event, data) {
-        var properties = this.objects[data.value].properties;
-        properties.scale = {label: 'Scale', type: 'number'};
-        properties.rotate = {label: 'Rotate', type: 'vector'};
-        properties.translate = {label: 'Translate', type: 'vector'};
+        this.selectedItem = data.value;
+        var properties = this.itemTypes[data.value].properties;
+        properties.scale = {label: 'Scale', type: 'number', val: 1};
+        properties.rotate = {label: 'Rotate', type: 'vector', val: {x:0, y:0, z:0}};
+        properties.translate = {label:'Translate', type:'vector', val:{x:0,y:0,z:0}};
         if (data.value !== 'group') {
-          properties.objectMaterial = {label: 'Material', type: 'material-select'};
+          properties.shader = {label: 'Material', type: 'material-select'};
         }
 
         // render the form
@@ -166,8 +271,8 @@ Main = (function() {
         }));
 
         // if this is not a Group, then add the select-materials dropdown items
-        if (data.value !== 'group') {
-          var materials = this.getMaterialsTab().getAddedMaterials();
+        if (this.selectedItem !== 'group') {
+          var materials = this.getMaterialsTab().getAddedItems();
           var selectBoxItem = _.template($('#t-select-box-item').html());
           var dropdownMenu = this.$('.object-materials-dropdown-box');
           dropdownMenu.empty();
@@ -184,80 +289,74 @@ Main = (function() {
     });
 
     // View for the Materials tab in the Create Scene modal dialog
-    var MaterialCreatorView = Backbone.View.extend({
+    var MaterialCreatorView = BaseCreatorView.extend({
       el: $('.materials-tab'),
+      addedItems: [],
+
       events: {
         'changed .material-select' : 'onMaterialSelect',
         'click .add-material' : 'onAddClick',
       },
 
-      materials: {
+      itemTypes: {
         lambertian : {
           label: 'Lambertian',
           properties: {
-            diffuseColor: {label: 'Diffuse Color', type: 'color'}
+            diffuseColor: {label: 'Diffuse Color', type: 'color',
+                            val: {r: 192, g: 192, b: 192}}
           }
         },
         phong: {
           label: 'Phong',
           properties: {
-            diffuseColor: {label: 'Diffuse Color', type: 'color'},
-            specularColor: {label: 'Specular Color', type: 'color'},
-            exponent: {label: 'Exponent', type: 'number'},
+            diffuseColor: {label: 'Diffuse Color', type: 'color',
+                            val: {r: 0, g: 0, b: 255}},
+            specularColor: {label: 'Specular Color', type: 'color',
+                            val: {r: 0, g: 255, b: 255}},
+            exponent: {label: 'Exponent', type: 'number', val: 100},
           }
         }
       },
 
-      addedMaterials: [],
-
       initialize: function() { 
+        MaterialCreatorView.__super__.initialize.apply(this, arguments);
         this.render();
       },
 
-      render: function() {
-        var selectBoxItem = _.template($('#t-select-box-item').html());
-        var dropdownMenu = this.$('.materials-dropdown-box');
-        dropdownMenu.empty();
-        for (var materialName in this.materials) {
-          dropdownMenu.append(selectBoxItem({
-            value: materialName,
-            label: this.materials[materialName].label
-          }));
-        }
-        this.renderTree();
-
-        return this;
-      },
-
-      getAddedMaterials: function() {
-        return this.addedMaterials;
-      },
-
-      renderTree: function() {
-        var addedMaterialsEl = this.$('.added-materials');
-        var treeTemplate = _.template($('#t-item-folder-tree').html());
-
-        addedMaterialsEl.empty();
-        addedMaterialsEl.html(treeTemplate({ className: 'added-materials-tree' }));
-        this.$('.added-materials-tree').tree({
-          dataSource: new TreeDataSource(this.addedMaterials),
-        });
-      },
-
       onAddClick: function(event) {
-        this.addedMaterials.push({ name: 'Test', type: 'item', additional: 'param' });
+        var material = {};
+        material.name = this.$('#inputMatName').val();
+        material.type = this.selectedItem;
+
+        var materialProperties = this.itemTypes[this.selectedItem].properties;
+        for (var propertyName in materialProperties) {
+          var property = materialProperties[propertyName];
+          if (property.type === 'color') {
+            material[propertyName] = this.parseRGBString(
+                this.$("#" + propertyName).val());
+          } else {
+            material[propertyName] = this.$("#" + propertyName).val();
+          }
+        }
+
+        this.addedItems.push({
+          name: material.name,
+          type: 'item',
+          material: material
+        });
         this.renderTree();
       },
 
       onMaterialSelect: function(event, data) {
-        var properties = this.materials[data.value].properties;
+        this.selectedItem = data.value;
+        var properties = this.itemTypes[this.selectedItem].properties;
         var template = _.template($('#t-material-properties-form').html());
         var materialPropertiesForm = this.$('.material-properties-form');
         materialPropertiesForm.empty();
         materialPropertiesForm.html(template({
           properties: properties
         }));
-        var colorpickers = $('.colorpicker');
+        var colorpickers = $('.material-colorpicker');
         if (colorpickers.length > 0) {
           colorpickers.colorpicker();
         }
@@ -282,6 +381,29 @@ Main = (function() {
       }
     });
 
+    var ThumbnailTabView = Backbone.View.extend({
+      el: $('.thumbnail-tab'),
+      events: {
+        'keydown #inputThumbnailURL' : 'onKeyDown',
+      },
+
+      initialize: function() {
+        this.keyTimer = null;
+      },
+
+      onKeyDown: function() {
+        clearTimeout(this.keyTimer);
+        this.keyTimer = setTimeout(this.loadImage.bind(this), 1000);
+      },
+
+      loadImage: function() {
+        var url = this.$('#inputThumbnailURL').val();
+        thumbnailImg = this.$('.thumbnail-img');
+        thumbnailImg.show();
+        thumbnailImg.attr('src', url);
+      },
+    });
+
     var CreateSceneDialogView = Backbone.View.extend({
       el: $('.createSceneModal'),
       events: {
@@ -289,12 +411,26 @@ Main = (function() {
       },
 
       initialize: function() {
-        this.materialsTab = new MaterialCreatorView;
-        this.objectsTab = new ObjectCreatorView;
+        this.materialsTab = new MaterialCreatorView({creatorType: 'material'});
+        this.objectsTab = new ObjectCreatorView({creatorType: 'object'});
+        this.lightsTab = new LightCreatorView({creatorType: 'light'});
+        this.thumbnailTab = new ThumbnailTabView();
+      },
+
+      render: function() {
+        // The dialog was already rendered when the page loaded.
+        // This is just for any additional rendering that needs to be done,
+        // such as setting default values for some inputs.
+        this.$('#inputAuthor').val(Init.getFbUserName());
+        return this;
+      },
+
+      getLightsTab: function() {
+        return this.lightsTab;
       },
 
       getMaterialsTab: function() {
-        return this.materialTab;
+        return this.materialsTab;
       },
 
       getObjectsTab: function() {
@@ -314,6 +450,7 @@ Main = (function() {
           success: (function(res) {
             console.log(scene);
             console.log('Success!');
+            gallery.add(new GalleryItem(res.galleryItem));
             this.$el.modal('hide');
           }).bind(this),
           error: function(res) {
@@ -323,9 +460,14 @@ Main = (function() {
       },
 
       getSceneAsJSON: function() {
+        var title = this.$('#inputTitle').val();
+        var author = this.$('#inputAuthor').val();
+        var thumbnailURL = this.$('#inputThumbnailURL').val();
+
         return {
-          title: 'Test Scene',
-          author: 'Author',
+          title: title,
+          author: author,
+          thumbnailURL: thumbnailURL,
           dimensions: this.gatherDimensions(),
           camera: this.gatherCamera(),
           lights: this.gatherLights(),
@@ -334,6 +476,7 @@ Main = (function() {
         };
       },
 
+      /*
       $C: function(r, g, b) {
         return { r: r, g: g, b: b };
       },
@@ -341,33 +484,68 @@ Main = (function() {
       $V: function(x, y, z) {
         return { x: x, y: y, z: z };
       },
+      */
 
       gatherDimensions: function() {
         return {
-          width: 400,
-          height: 300,
+          width: this.$('#inputWidth').val(),
+          height: this.$('#inputHeight').val(),
+        };
+      },
+
+      gatherVectorInput: function(id) {
+        return {
+          x: this.$("#" + id + "-x").val(),
+          y: this.$("#" + id + "-y").val(),
+          z: this.$("#" + id + "-z").val(),
         };
       },
 
       gatherCamera: function() {
+        return {
+          eye: this.gatherVectorInput('inputEye'),
+          viewDirection: this.gatherVectorInput('inputViewDirection'),
+          up: this.gatherVectorInput('inputUp'),
+          projectionDistance: this.$('#inputProjectionDistance').val()
+        };
+        /*
         return {
           eye: this.$V(0, 0, 1),
           viewDirection: this.$V(0, 0, -1),
           up: this.$V(0, 1, 0),
           projectionDistance: 1
         };
+        */
       },
 
       gatherLights: function() {
         // a light is a (position, intensity) tuple
         // returns a list of lights
+        var lights = [];
+        var addedLights = this.getLightsTab().getAddedItems();
+        for (var i = 0; i < addedLights.length; i++) {
+          var light = addedLights[i].light;
+          lights.push(light);
+        }
+        return lights;
+        /*
         return [
           { position: this.$V(0, 0, 0), intensity: this.$C(1, 1, 1)}
         ];
+        */
       },
 
       gatherMaterials: function() {
         // returns a map of materialName -> materialProperties
+        var materials = {};
+        var addedMaterials = this.getMaterialsTab().getAddedItems();
+        for (var i = 0; i < addedMaterials.length; i++) {
+          var material = addedMaterials[i].material;
+          materials[material.name] = material;
+        }
+        return materials;
+
+        /*
         return {
           plastic: {
             type: 'phong',
@@ -376,10 +554,19 @@ Main = (function() {
             exponent: 100,
           },
         };
-//        return this.getMaterialsTab().getAddedMaterials();
+        */
       },
 
       gatherObjects: function() {
+        // TODO: handle grouping
+        var objects = [];
+        var addedObjects = this.getObjectsTab().getAddedItems();
+        for (var i = 0; i < addedObjects.length; i++) {
+          var object = addedObjects[i].object;
+          objects.push(object);
+        }
+        return objects;
+
         /*
         return [
           {
@@ -402,6 +589,7 @@ Main = (function() {
         ];
         */
 
+        /*
         return [
           {
             type: 'box',
@@ -413,6 +601,7 @@ Main = (function() {
             translate: this.$V(0.3, 0.3, -5),
           }
         ];
+        */
 
 //        return this.getObjectsTab().getAddedObjects();
       },
@@ -503,7 +692,7 @@ Main = (function() {
       connected: false,
 
       initialize: function(options) {
-        this.model.on('change:thumbnail', this.onChangeThumbnail, this);
+        this.model.on('change:thumbnailURL', this.onChangeThumbnail, this);
         this.render();
       },
 
@@ -543,12 +732,19 @@ Main = (function() {
 
       initialize: function() {
         gallery.bind('reset', this.resetGalleryItems, this);
+        gallery.bind('add', this.addGalleryItem, this);
         this.render();
       },
 
       render: function() {
         this.refreshGalleryData();
         return this;
+      },
+
+      addGalleryItem: function(galleryItem) {
+        var galleryThumbnails = this.$('.gallery-thumbnails');
+        var galleryItemView = new GalleryItemView({ model: galleryItem });
+        galleryThumbnails.append(galleryItemView.render().el);
       },
 
       resetGalleryItems: function(galleryItems) {
@@ -572,10 +768,6 @@ Main = (function() {
             console.log("getScenes Success");
             gallery.reset(res.scenes);
           }).bind(this),
-          complete: function() {
-            clearTimeout(syncGalleryTimer);
-            syncGalleryTimer = setTimeout(syncGallery, GALLERY_REFRESH_TIME);
-          },
         });
       },
     });
@@ -584,6 +776,10 @@ Main = (function() {
     mainViews[Router.ABOUT] = new AboutView;
     mainViews[Router.CONTACT] = new ContactView;
     mainViews[Router.SCENE] = new SceneView;
+
+    $('.create-scene-button').on('click', function(event) {
+      mainViews[Router.HOME].getCreateSceneDialog().render();
+    });
   };
 
   return {

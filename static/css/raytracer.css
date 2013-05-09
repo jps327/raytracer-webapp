@@ -33,11 +33,19 @@
   vertical-align: bottom;
 }
 
+.createSceneModal .thumbnail-tab .thumbnails .thumbnail-img {
+  display: none;
+  height: 200px;
+  width: 300px;
+}
+
+.createSceneModal .lights-tab .form-horizontal .control-label,
 .createSceneModal .objects-tab .form-horizontal .control-label,
 .createSceneModal .materials-tab .form-horizontal .control-label {
   width: 100px;
 }
 
+.createSceneModal .lights-tab .form-horizontal .controls,
 .createSceneModal .objects-tab .form-horizontal .controls,
 .createSceneModal .materials-tab .form-horizontal .controls {
   margin-left: 120px;
@@ -47,6 +55,7 @@
   z-index: 1100;
 }
 
+.createSceneModal .lights-tab .added-lights-tree,
 .createSceneModal .objects-tab .added-objects-tree,
 .createSceneModal .materials-tab .added-materials-tree {
   height: 190px;

@@ -31,6 +31,7 @@ window.console = window.console || (function(){
 var Init = (function() {
   var storedAcid = "";
   var storedFbId = "";
+  var storedFbUserName = "";
 
   var fbLoggedIn = false;
   var fbInitComplete = false;
@@ -49,6 +50,14 @@ var Init = (function() {
 
   var setFbId = function(id) {
     storedFbId = id;
+  };
+
+  var getFbUserName = function() {
+    return storedFbUserName;
+  };
+
+  var setFbUserName = function(name) {
+    storedFbUserName = name;
   };
 
   // returns if FB has been initialized - i.e. user has logged in, and
@@ -91,6 +100,11 @@ var Init = (function() {
             setFbId(authResponse.userID);
             console.log("Received Acid: " + res.acid);
             fbInitComplete = true;
+
+            // get fb user info
+            FB.api('/me', function(user) {
+              setFbUserName(user.name);
+            });
           },
           error: function(res) {
             // TODO: handle error
@@ -134,6 +148,7 @@ var Init = (function() {
     initFB: initFB,
     getAcid: getAcid,
     getFbId: getFbId,
+    getFbUserName: getFbUserName,
     isInitialized: isInitialized,
   };
 
@@ -147,3 +162,6 @@ var Init = (function() {
   js.src = "//connect.facebook.net/en_US/all.js";
   ref.parentNode.insertBefore(js, ref);
 }(document));
+
+
+

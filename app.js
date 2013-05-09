@@ -229,6 +229,7 @@ app.post('/api/createScene', function(req, res) {
   var sceneObj = new Scene({
     title: scene.title,
     author: scene.author,
+    thumbnailURL: scene.thumbnailURL,
     date: Date.now(),
     numUsersConnected: 0,
     camera: scene.camera,
@@ -245,7 +246,16 @@ app.post('/api/createScene', function(req, res) {
     if (!err) {
       // scene has been created, so it is now ready for job scheduling
       scheduling.addScene(sceneObj._id, sceneObj.width, sceneObj.height);
-      success(res);
+      success(res, {
+        galleryItem: {
+          _id: sceneObj._id,
+          title: scene.title,
+          author: scene.author,
+          numUsersConnected: 0,
+          thumbnailURL: scene.thumbnailURL,
+          finishedRendering: false,
+        }
+      });
     } else {
       console.log(err);
       error(res);
@@ -258,7 +268,8 @@ app.post('/api/createScene', function(req, res) {
 // whether or not the scene has finished rendering)
 app.post('/api/getScenes', function(req, res) {
   var query = Scene.find();
-  query.select({title: 1, author: 1, numUsersConnected: 1, finishedRendering: 1});
+  query.select({title: 1, author: 1, numUsersConnected: 1,
+    thumbnailURL: 1, finishedRendering: 1});
   query.exec(function(err, scenes) {
     if (err) {
       error(res);

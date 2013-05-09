@@ -88,23 +88,24 @@
   <!-- Create Scene Modal-->
   <script id="t-input-vector" type="text/template">
     <div class="control-group">
-      <label class="control-label" for="input<%= name %>"><%= name %></label>
+      <label class="control-label" for="input<%= id %>-x"><%= label %></label>
       <div class="controls">
-        <input type="text" id="input<%= name %>" placeholder="x"
-        class="vector-component" value="<%= val.x %>" />
-        <input type="text" id="input<%= name %>" placeholder="y"
-        class="vector-component" value="<%= val.y %>" />
-        <input type="text" id="input<%= name %>" placeholder="z"
-        class="vector-component" value="<%= val.z %>" />
+        <input type="text" id="input<%= id %>-x" placeholder="x"
+          class="vector-component" value="<%= val.x %>" />
+        <input type="text" id="input<%= id %>-y" placeholder="y"
+          class="vector-component" value="<%= val.y %>" />
+        <input type="text" id="input<%= id %>-z" placeholder="z"
+          class="vector-component" value="<%= val.z %>" />
         <span class="help-inline">Vector[x, y, z]</span>
       </div>
     </div>
   </script>
 
   <script>
-    var writeVector = function(name, val) {
+    var writeVector = function(id, label, val) {
       return _.template($('#t-input-vector').html())({
-        name: name,
+        id: id,
+        label: label,
         val: {x: val.x, y: val.y, z: val.z}
       });
     };
@@ -124,6 +125,7 @@
       <ul id="createSceneTab" class="nav nav-tabs">
         <li class="active"><a href="#thumbnail" data-toggle="tab">Thumbnail</a></li>
         <li><a href="#properties" data-toggle="tab">Properties</a></li>
+        <li><a href="#lights" data-toggle="tab">Lights</a></li>
         <li><a href="#materials" data-toggle="tab">Materials</a></li>
         <li><a href="#objects" data-toggle="tab">Objects</a></li>
       </ul>
@@ -132,40 +134,69 @@
         <!-- Thumbnail Selection -->
         <div class="thumbnail-tab tab-pane fade in active" id="thumbnail">
           <p>
-          Upload an image to be used as a thumbnail in the gallery.
-          This image should give viewers an idea of the kind of scene you
-          want to render.
+          Enter the URL to an image you want to use as a thumbnail in the gallery.
+          It is recommended that your thumbnail suggest what your scene looks like,
+          that way others will want to connect to it.
           </p>
           <form>
             <fieldset>
-              <div class="fileupload fileupload-new" data-provides="fileupload">
-                <div class="fileupload-preview thumbnail" style="width: 300px; height: 200px;"></div>
-                <div>
-                  <span class="btn btn-file">
-                    <span class="fileupload-new">Select image</span>
-                    <span class="fileupload-exists">Change</span>
-                    <input type="file" />
-                  </span>
-                  <a href="#" class="btn fileupload-exists" data-dismiss="fileupload">Remove</a>
+              <div class="control-group">
+                <label class="control-label" for="inputThumbnailURL">
+                  URL
+                </label>
+                <div class="controls">
+                  <input type="text" id="inputThumbnailURL" class="span4" value="" />
                 </div>
+                <span class="help-inline">
+                  If you want to upload your own image, we suggest you upload
+                  it through
+                  <a href="http://imgur.com" target="_blank">imgur</a>
+                  and then enter the URL here.
+                </span>
               </div>
             </fieldset>
           </form>
+
+          <ul class="thumbnails">
+            <li class="span4">
+              <img class="thumbnail-img" src="" />
+            </li>
+          </ul>
+
         </div>
 
         <!-- Scene Properties -->
         <div class="scene-properties-tab tab-pane fade" id="properties">
           <div class="sceneProperties accordion" id="scenePropertiesAccordion">
-            <!-- Image Dimensions -->
+            <!-- General Properties -->
             <div class="accordion-group">
               <div class="accordion-heading">
                 <a class="accordion-toggle" data-toggle="collapse"
-                  data-parent="#scenePropertiesAccordion" href="#imageDimensions">Image Dimensions</a>
+                  data-parent="#scenePropertiesAccordion" href="#generalProperties">General Properties</a>
               </div>
-              <div id="imageDimensions" class="accordion-body collapse in">
+              <div id="generalProperties" class="accordion-body collapse in">
                 <div class="accordion-inner">
                   <form class="form-horizontal">
                     <fieldset>
+                      <div class="control-group">
+                        <label class="control-label" for="inputTitle">Title</label>
+                        <div class="controls">
+                          <input type="text" id="inputTitle" class="span3"
+                          value="Untitled Scene" />
+                        </div>
+                      </div>
+
+                      <div class="control-group">
+                        <label class="control-label" for="inputAuthor">Author</label>
+                        <div class="controls">
+                          <input type="text" id="inputAuthor" class="span3" value=""/>
+                          <span class="help-inline">
+                            If you prefer using a pseudonym you do not have
+                            to use your real name.
+                          </span>
+                        </div>
+                      </div>
+
                       <div class="control-group">
                         <label class="control-label" for="inputWidth">Width</label>
                         <div class="controls">
@@ -202,16 +233,17 @@
                   <form class="form-horizontal">
                     <fieldset>
                       <script>
-                        document.write(writeVector('Eye', {x: 0, y: 0, z: 1}));
-                        document.write(writeVector('View Direction', {x: 0, y: 0, z: -1}));
-                        document.write(writeVector('Up', {x: 0, y: 1, z: 0}));
+                        document.write(writeVector('Eye', 'Eye', {x: 0, y: 0, z: 1}));
+                        document.write(writeVector('ViewDirection', 'View Direction',
+                          {x: 0, y: 0, z: -1}));
+                        document.write(writeVector('Up', 'Up', {x: 0, y: 1, z: 0}));
                       </script>
                       <div class="control-group">
-                        <label class="control-label" for="inputProjDist">
+                        <label class="control-label" for="inputProjectionDistance">
                           Projection Distance
                         </label>
                         <div class="controls">
-                          <input type="text" id="inputProjDist"
+                          <input type="text" id="inputProjectionDistance"
                             class="span1" value="1" />
                         </div>
                       </div>
@@ -222,38 +254,71 @@
               </div>
             </div>
 
-
-            <!-- Lights -->
-            <div class="accordion-group">
-              <div class="accordion-heading">
-                <a class="accordion-toggle" data-toggle="collapse"
-                  data-parent="#scenePropertiesAccordion" href="#lights">Lights</a>
-              </div>
-              <div id="lights" class="accordion-body collapse">
-                <div class="accordion-inner">
-                  TODO: add lights
-                  <form class="form-horizontal">
-                    <fieldset>
-                      <div class="control-group">
-                        <label class="control-label" for="inputWidth">Width</label>
-                        <div class="controls">
-                          <input type="text" id="inputWidth" class="span1" value="400" />
-                        </div>
-                      </div>
-        
-                      <div class="control-group">
-                        <label class="control-label" for="inputHeight">Height</label>
-                        <div class="controls">
-                          <input type="text" id="inputHeight" class="span1" value="300" />
-                        </div>
-                      </div>
-                    </fieldset>
-                  </form>
-                </div>
-              </div>
-            </div>
-
           </div>
+        </div>
+
+        <!-- Light Creation -->
+        <div class="lights-tab tab-pane fade" id="lights">
+          <div class="pull-left">
+            <h5> Add Lights</h5>
+            <form class="form-horizontal">
+              <fieldset>
+                <div class="control-group">
+                  <label class="control-label" for="inputLightName">
+                    Name
+                  </label>
+                  <div class="controls">
+                    <input type="text" id="inputLightName" class="span2" value="" />
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <label class="control-label" for="inputLightPos-x">
+                    Position
+                  </label>
+                  <div class="controls">
+                    <input type="text" id="inputLightPos-x" placeholder="x"
+                      class="vector-component" value="-2" />
+                    <input type="text" id="inputLightPos-y" placeholder="y"
+                      class="vector-component" value="3" />
+                    <input type="text" id="inputLightPos-z" placeholder="z"
+                      class="vector-component" value="1" />
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <label class="control-label" for="inputLightColor">
+                    Color
+                  </label>
+                  <div class="controls">
+                    <div class="light-colorpicker input-append color"
+                      data-color="rgb(255,255,255)" data-color-format="rgb">
+                      <input id="inputLightColor" type="text" class="span2"
+                        value="rgb(255,255,255)" readonly />
+                      <span class="add-on">
+                        <i style="background-color: rgb(255,255,255);"></i>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="control-group">
+                  <label class="control-label" for="inputLightIntensity">
+                    Intensity
+                  </label>
+                  <div class="controls">
+                    <input type="text" id="inputLightIntensity" class="span2"
+                      value="1" />
+                  </div>
+                </div>
+
+                <input type="button" class="add-light btn btn-primary"
+                  value="Add" />
+              </fieldset>
+            </form>
+          </div>
+
+          <div class="pull-right added-lights"></div>
         </div>
 
         <!-- Material Creation -->
@@ -360,12 +425,12 @@
     <div class="gallery-thumbnail thumbnail">
       <a href="#scene/<%= scene._id %>" class="thumbnail">
         <div
-          style="background-image: url('<%= scene.thumbnail %>');"
+          style="background-image: url('<%= scene.thumbnailURL %>');"
           class="gallery-img"></div>
       </a>
       <div class="caption">
         <h3><%= scene.title %></h3>
-        <p><%= scene.author %></p>
+        <p>by <%= scene.author %></p>
         <% if (!scene.finishedRendering) { %>
           <p>
             <div class="btn btn-primary btn-connect">Connect</div>
@@ -423,20 +488,21 @@
           <% print(property.label); %>
         </label>
         <div class="controls">
-          <% if (property.type === 'number') { %>
-            <input id="<%= id %>" type="text" class="span1" value="" >
+          <% var val = property.val;
+          if (property.type === 'number') { %>
+            <input id="<%= id %>" type="text" class="span1" value="<%= val %>" >
           <% } else if (property.type === 'color') { 
-            var startColor = "rgb(255, 146, 180)"; %>
-            <div class="colorpicker input-append color"
+            var startColor = "rgb(" + val.r + "," + val.g + "," + val.b +")"; %>
+            <div class="material-colorpicker input-append color"
               data-color="<%= startColor %>" data-color-format="rgb">
-              <input id="<%= id %>" type="text" class="span2" value="" readonly>
+              <input id="<%= id %>" type="text" class="span2"
+                value="<%= startColor %>" readonly />
               <span class="add-on">
                 <i style="background-color: <%= startColor %>"></i>
               </span>
             </div>
           <% } %>
         </div>
-
       </div> 
   <% } %>
   </script>
@@ -450,16 +516,17 @@
           <%= property.label %>
         </label>
         <div class="controls">
-          <% if (property.type === 'number') { %>
-            <input id="<%= id %>" type="text" class="span1" value="" >
+          <% var val = property.val;
+          if (property.type === 'number') { %>
+            <input id="<%= id %>" type="text" class="span1" value="<%= val %>" >
           <% } else if (property.type === 'vector') { %>
-            <input type="text" id="<%= id %>" placeholder="x"
-              class="vector-component" />
-            <input type="text" id="<%= id %>" placeholder="y"
-              class="vector-component" />
-            <input type="text" id="<%= id %>" placeholder="z"
-              class="vector-component" />
-          <% } else if (property.type === 'material-select' && id !== 'group') { %>
+            <input type="text" id="<%= id %>-x" placeholder="x"
+              class="vector-component" value="<%= val.x %>" />
+            <input type="text" id="<%= id %>-y" placeholder="y"
+              class="vector-component" value="<%= val.y %>" />
+            <input type="text" id="<%= id %>-z" placeholder="z"
+              class="vector-component" value="<%= val.z %>" />
+          <% } else if (property.type === 'material-select') { %>
             <div id="<%= id %>" data-resize="auto"
               class="select btn-group object-material-select">
               <button data-toggle="dropdown" class="btn dropdown-toggle">

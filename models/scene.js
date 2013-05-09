@@ -3,6 +3,7 @@ require('./db_connect');
 var SceneSchema = new Schema({
   title: String,
   author: String,
+  thumbnailURL: String,
   date: { type: Date, default: Date.now },
   numUsersConnected: { type: Number, min: 0, default: 0 },
 
