@@ -476,16 +476,6 @@ Main = (function() {
         };
       },
 
-      /*
-      $C: function(r, g, b) {
-        return { r: r, g: g, b: b };
-      },
-
-      $V: function(x, y, z) {
-        return { x: x, y: y, z: z };
-      },
-      */
-
       gatherDimensions: function() {
         return {
           width: this.$('#inputWidth').val(),
@@ -508,14 +498,6 @@ Main = (function() {
           up: this.gatherVectorInput('inputUp'),
           projectionDistance: this.$('#inputProjectionDistance').val()
         };
-        /*
-        return {
-          eye: this.$V(0, 0, 1),
-          viewDirection: this.$V(0, 0, -1),
-          up: this.$V(0, 1, 0),
-          projectionDistance: 1
-        };
-        */
       },
 
       gatherLights: function() {
@@ -528,11 +510,6 @@ Main = (function() {
           lights.push(light);
         }
         return lights;
-        /*
-        return [
-          { position: this.$V(0, 0, 0), intensity: this.$C(1, 1, 1)}
-        ];
-        */
       },
 
       gatherMaterials: function() {
@@ -544,17 +521,6 @@ Main = (function() {
           materials[material.name] = material;
         }
         return materials;
-
-        /*
-        return {
-          plastic: {
-            type: 'phong',
-            diffuseColor: this.$C(0, 0, 1),
-            specularColor: this.$C(0, 1, 1),
-            exponent: 100,
-          },
-        };
-        */
       },
 
       gatherObjects: function() {
@@ -588,22 +554,6 @@ Main = (function() {
           },
         ];
         */
-
-        /*
-        return [
-          {
-            type: 'box',
-            minPt: this.$V(-1, -0.5, -3),
-            maxPt: this.$V(1, 0.5, 3),
-            shader: 'plastic',
-            scale: this.$V(0.5, 0.5, 0.5),
-            rotate: this.$V(-5, 5, 10),
-            translate: this.$V(0.3, 0.3, -5),
-          }
-        ];
-        */
-
-//        return this.getObjectsTab().getAddedObjects();
       },
     });
 
