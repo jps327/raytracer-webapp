@@ -71,6 +71,14 @@ Main = (function() {
         this.creatorType = options.creatorType;
       },
 
+      clearAddedItems: function() {
+        this.addedItems = [];
+      },
+
+      addItem: function(item) {
+        this.addedItems.push(item);
+      },
+
       getAddedItems: function() {
         return this.addedItems;
       },
@@ -162,15 +170,9 @@ Main = (function() {
         var light = {};
         light.name = this.$('#inputLightName').val();
         light.position = this.gatherVectorInput('inputLightPos');
-
-        var color = this.parseRGBString(this.$('#inputLightColor').val());
-        var intensity = parseFloat(this.$('#inputLightIntensity').val());
-        light.intensity = {
-          r: color.r * intensity,
-          g: color.g * intensity,
-          b: color.b * intensity
-        };
-        this.addedItems.push({
+        light.color = this.parseRGBString(this.$('#inputLightColor').val());
+        light.intensity = parseFloat(this.$('#inputLightIntensity').val());
+        this.addItem({
           name: light.name,
           type: 'item',
           light: light
@@ -244,7 +246,7 @@ Main = (function() {
         object.rotate = this.gatherVectorInput('rotate');
         object.translate = this.gatherVectorInput('translate');
 
-        this.addedItems.push({
+        this.addItem({
           name: object.name,
           type: 'item',
           object: object
@@ -339,7 +341,7 @@ Main = (function() {
           }
         }
 
-        this.addedItems.push({
+        this.addItem({
           name: material.name,
           type: 'item',
           material: material
@@ -404,6 +406,72 @@ Main = (function() {
       },
     });
 
+    var LoadSceneSectionView = Backbone.View.extend({
+      el: $('.load-scene'),
+      events: {
+        'click .btn-load-scene' : 'onLoadClick',
+        'click .load-scene-select' : 'onSelectClick',
+      },
+      dropdownMenuVisible: false,
+      firstDropdownClick: true,
+
+      render: function() {
+        $.ajax({
+          type: 'POST',
+          url: '/api/getMyScenes',
+          data: { acid: Init.getAcid() },
+          success: (function(res) {
+            console.log("FUCK");
+            console.log(Init.getAcid());
+            console.log(res);
+
+            // populate the load-scenes dropdown box
+            var selectBoxItem = _.template($('#t-select-box-item').html());
+            var dropdownMenu = this.$('.load-scene-dropdown-box');
+            dropdownMenu.empty();
+            for (var i = 0; i < res.scenes.length; i++) {
+              var scene = res.scenes[i];
+              dropdownMenu.append(selectBoxItem({
+                value: scene._id,
+                label: scene.title
+              }));
+            }
+
+            this.$('.load-scene-select')
+              .select()
+              .select('selectByIndex', 0)
+              .select('resize');
+          }).bind(this),
+        });
+      },
+
+      onSelectClick: function() {
+        // when we click the load-scene-select, this function changes the
+        // height of the Load Scene section accordingly to keep the dropdown
+        // menu from getting cut off.
+        if (this.firstDropdownClick) {
+          this.firstDropdownClick = false;
+          this.baseHeight = this.$el.height();
+          this.dropdownMenuHeight = this.$('.load-scene-dropdown-box').height();
+        }
+
+        var currentHeight = this.$el.height();
+        var dropdownDisplay = this.$('.load-scene-dropdown-box').css('display');
+        if (currentHeight === this.baseHeight && dropdownDisplay === 'none') {
+          this.$el.height(this.baseHeight + this.dropdownMenuHeight);
+        } else if (currentHeight === this.baseHeight + this.dropdownMenuHeight
+            && dropdownDisplay === 'block') {
+          this.$el.height(this.baseHeight);
+        }
+      },
+
+      onLoadClick: function() {
+        var createSceneDialog = mainViews[Router.HOME].getCreateSceneDialog();
+        var selectedItem = this.$('.load-scene-select').select('selectedItem');
+        createSceneDialog.loadScene(selectedItem.value);
+      },
+    });
+
     var CreateSceneDialogView = Backbone.View.extend({
       el: $('.createSceneModal'),
       events: {
@@ -415,6 +483,7 @@ Main = (function() {
         this.objectsTab = new ObjectCreatorView({creatorType: 'object'});
         this.lightsTab = new LightCreatorView({creatorType: 'light'});
         this.thumbnailTab = new ThumbnailTabView();
+        this.loadSceneSection = new LoadSceneSectionView();
       },
 
       render: function() {
@@ -422,6 +491,7 @@ Main = (function() {
         // This is just for any additional rendering that needs to be done,
         // such as setting default values for some inputs.
         this.$('#inputAuthor').val(Init.getFbUserName());
+        this.loadSceneSection.render();
         return this;
       },
 
@@ -445,6 +515,7 @@ Main = (function() {
           type: 'POST',
           url: '/api/createScene',
           data: {
+            acid: Init.getAcid(),
             scene: scene
           },
           success: (function(res) {
@@ -459,16 +530,86 @@ Main = (function() {
         });
       },
 
+      // given a scene id, load the scene into the dialog
+      loadScene: function(sceneID) {
+        $.ajax({
+          type: 'POST',
+          url: '/api/getSceneRenderingData',
+          data: { sceneID: sceneID },
+          success: (function(res) {
+            var scene = res.scene;
+            var width = scene.width;
+            var height = scene.height;
+            var camera = scene.camera;
+            var lights = scene.lights;
+            var materials = scene.materials;
+            var objects = scene.objects;
+
+            // set width and height 
+            this.$('#inputWidth').val(width);
+            this.$('#inputHeight').val(height);
+
+            // set camera properties
+            this.setVectorInput('inputEye', camera.eye);
+            this.setVectorInput('inputViewDirection', camera.viewDirection);
+            this.setVectorInput('inputUp', camera.up);
+            this.$('#inputProjectionDistance').val(camera.projectionDistance);
+
+            // set lights
+            var lightsTab = this.getLightsTab();
+            lightsTab.clearAddedItems();
+            _.each(lights, function(light) {
+              lightsTab.addItem({
+                name: light.name,
+                type: 'item',
+                light: light
+              });
+            });
+            lightsTab.render();
+
+            // set materials
+            var materialsTab = this.getMaterialsTab();
+            materialsTab.clearAddedItems();
+            for (var materialName in materials) {
+              var material = materials[materialName];
+              materialsTab.addItem({
+                name: materialName,
+                type: 'item',
+                material: material
+              });
+            }
+            materialsTab.render();
+
+            // set objects
+            var objectsTab = this.getObjectsTab();
+            objectsTab.clearAddedItems();
+            _.each(objects, function(object) {
+              objectsTab.addItem({
+                name: object.name,
+                type: 'item',
+                object: object
+              });
+            });
+            objectsTab.render();
+
+          }).bind(this),
+        });
+
+      },
+
       getSceneAsJSON: function() {
         var title = this.$('#inputTitle').val();
         var author = this.$('#inputAuthor').val();
         var thumbnailURL = this.$('#inputThumbnailURL').val();
+        var width = this.$('#inputWidth').val();
+        var height = this.$('#inputHeight').val();
 
         return {
           title: title,
           author: author,
           thumbnailURL: thumbnailURL,
-          dimensions: this.gatherDimensions(),
+          width: width,
+          height: height,
           camera: this.gatherCamera(),
           lights: this.gatherLights(),
           materials: this.gatherMaterials(),
@@ -476,11 +617,10 @@ Main = (function() {
         };
       },
 
-      gatherDimensions: function() {
-        return {
-          width: this.$('#inputWidth').val(),
-          height: this.$('#inputHeight').val(),
-        };
+      setVectorInput: function(id, vector) {
+        this.$("#" + id + "-x").val(vector.x);
+        this.$("#" + id + "-y").val(vector.y);
+        this.$("#" + id + "-z").val(vector.z);
       },
 
       gatherVectorInput: function(id) {
@@ -615,7 +755,7 @@ Main = (function() {
             this.render();
           }).bind(this),
           error: function(res) {
-            // TODO: resent request on error, or depends on the error
+            // TODO: resend request on error, or depends on the error
           },
           timeout: 5000
         });
@@ -712,10 +852,10 @@ Main = (function() {
       refreshGalleryData: function() {
         $.ajax({
           type: 'POST',
-          url: 'api/getScenes',
+          url: 'api/getPublishedScenes',
           data: {},
           success: (function(res) {
-            console.log("getScenes Success");
+            console.log("getPublishedScenes Success");
             gallery.reset(res.scenes);
           }).bind(this),
         });

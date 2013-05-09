@@ -3,6 +3,8 @@ require('./db_connect');
 var SceneSchema = new Schema({
   title: String,
   author: String,
+  createdByAcid: String,
+
   thumbnailURL: String,
   date: { type: Date, default: Date.now },
   numUsersConnected: { type: Number, min: 0, default: 0 },
@@ -13,8 +15,10 @@ var SceneSchema = new Schema({
   objects: [Schema.Types.Mixed], // array of objects
   height: Number,
   width: Number,
-  startedRendering: Boolean,
-  finishedRendering: Boolean,
+
+  published: {type: Boolean, default: false}, // false if this is a saved scene not yet published to gallery
+  startedRendering: {type: Boolean, default: false},
+  finishedRendering: {type: Boolean, default: false},
 });
 
 module.exports.Scene = mongoose.model('Scene', SceneSchema);

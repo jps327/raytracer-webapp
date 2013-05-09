@@ -225,10 +225,12 @@ var getUserInfo = function(req, res, accessToken, userID, isNewUser) {
 // Adds a scene to the DB
 app.post('/api/createScene', function(req, res) {
   var scene = req.param('scene');
+  var acid = req.param('acid');
 
   var sceneObj = new Scene({
     title: scene.title,
     author: scene.author,
+    createdByAcid: acid,
     thumbnailURL: scene.thumbnailURL,
     date: Date.now(),
     numUsersConnected: 0,
@@ -236,8 +238,9 @@ app.post('/api/createScene', function(req, res) {
     lights: scene.lights,
     materials: scene.materials,
     objects: scene.objects,
-    height: scene.dimensions.height,
-    width: scene.dimensions.width,
+    height: scene.height,
+    width: scene.width,
+    published: true,
     startedRendering: false,
     finishedRendering: false,
   });
@@ -264,10 +267,10 @@ app.post('/api/createScene', function(req, res) {
 });
 
 // TODO: implement pagination
-// gets the basic info for all scenes (title, author, numUsersConnected, and
-// whether or not the scene has finished rendering)
-app.post('/api/getScenes', function(req, res) {
-  var query = Scene.find();
+// gets the basic info for all published scenes (title, author,
+// numUsersConnected, and whether or not the scene has finished rendering)
+app.post('/api/getPublishedScenes', function(req, res) {
+  var query = Scene.find({ published: true });
   query.select({title: 1, author: 1, numUsersConnected: 1,
     thumbnailURL: 1, finishedRendering: 1});
   query.exec(function(err, scenes) {
@@ -311,3 +314,17 @@ app.post('/api/getSceneRenderingData', function(req, res) {
     });
 });
 
+// Gets all of the scenes saved or published by a given user acid
+app.post('/api/getMyScenes', function(req, res) {
+  var acid = req.param('acid');
+  Scene
+    .find({ createdByAcid: acid })
+    .select({ title: 1})
+    .exec(function(err, scenes) {
+      if (err) {
+        error(res);
+      } else {
+        success(res, {scenes: scenes});
+      }
+    });
+});

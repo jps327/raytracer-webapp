@@ -1549,7 +1549,7 @@ var RayTracer = (function() {
     // add lights to the scene
     for (var i = 0; i < lights.length; i++) {
       var light = lights[i];
-      var intensity = light.intensity;
+      var intensity = light.color.scale(light.intensity);
       var position = light.position;
       // TODO: change Light to use data object instead of individual arguments
       scene.addLight(new Light(position, intensity));
@@ -1567,7 +1567,6 @@ var RayTracer = (function() {
       scene.addSurface(surface);
     }
 
-    console.log("Width: " + width + ", " + "Height: " + height);
     scene
       .setImageDimensions(width, height)
       .setTransform()
