@@ -94,6 +94,8 @@ Main = (function() {
     // Base View for the ObjectCreator and MaterialCreator Views
     var BaseCreatorView = Backbone.View.extend({
       selectedItem: "", // what item type we've currently selected
+      isEditing: false,
+      itemBeingEdited: "",
 
       initialize: function(options) {
         this.creatorType = options.creatorType;
@@ -104,6 +106,12 @@ Main = (function() {
       },
 
       addItem: function(item) {
+        this.addedItems[item.name] = item;
+      },
+
+      editItem: function(item) {
+        this.addedItems[this.itemBeingEdited] = undefined;
+        delete this.addedItems[this.itemBeingEdited];
         this.addedItems[item.name] = item;
       },
 
@@ -232,7 +240,26 @@ Main = (function() {
       onEditClick: function(event) {
         event.stopPropagation();
         var itemName = $(event.target).data('name');
-        this.editItem(itemName);
+        this.isEditing = true;
+        this.itemBeingEdited = itemName;
+
+        // change form buttons
+        this.$(".btn-add-"+this.creatorType).val('Save');
+        this.$(".btn-add-"+this.creatorType).addClass('btn-success');
+        this.$(".btn-add-"+this.creatorType).removeClass('btn-primary');
+        this.$(".btn-cancel-"+this.creatorType).show();
+
+        this.populateEditableInputs(itemName);
+      },
+
+      onCancelEditClick: function(event) {
+        this.isEditing = false;
+
+        // change form buttons back
+        this.$(".btn-add-"+this.creatorType).val('Add');
+        this.$(".btn-add-"+this.creatorType).addClass('btn-primary');
+        this.$(".btn-add-"+this.creatorType).removeClass('btn-success');
+        this.$(".btn-cancel-"+this.creatorType).hide();
       },
 
       removeSelectedItems: function() {
@@ -256,7 +283,8 @@ Main = (function() {
       addedItems: {},
 
       events: {
-        'click .add-light' : 'onAddClick',
+        'click .btn-add-light' : 'onAddClick',
+        'click .btn-cancel-light' : 'onCancelEditClick',
         'click .btn-remove-selected-lights' : 'removeSelectedItems',
       },
 
@@ -271,16 +299,24 @@ Main = (function() {
         light.position = this.gatherVectorInput('inputLightPos');
         light.color = this.parseRGBString(this.$('#inputLightColor').val());
         light.intensity = parseFloat(this.$('#inputLightIntensity').val());
-        this.addItem({
+
+        var itemToAdd = {
           name: light.name,
           type: 'item',
           light: light
-        });
+        };
+
+        if (this.isEditing) {
+          this.editItem(itemToAdd);
+        } else {
+          this.addItem(itemToAdd);
+        }
+        this.onCancelEditClick(); // added/edited item, now cancel out of editing
         this.renderTree();
       },
 
       // called when the edit icon is clicked for lights
-      editItem: function(itemName) {
+      populateEditableInputs: function(itemName) {
         var light = this.addedItems[itemName].light;
         this.$('#inputLightName').val(light.name);
         this.setVectorInput('inputLightPos', light.position);
@@ -296,7 +332,8 @@ Main = (function() {
 
       events: {
         'changed .object-select' : 'onObjectSelect',
-        'click .add-object' : 'onAddClick',
+        'click .btn-add-object' : 'onAddClick',
+        'click .btn-cancel-object' : 'onCancelEditClick',
         'click .btn-remove-selected-objects' : 'removeSelectedItems',
       },
 
@@ -331,7 +368,7 @@ Main = (function() {
       },
 
       // called when the edit icon is clicked for objects
-      editItem: function(itemName) {
+      populateEditableInputs: function(itemName) {
         var object = this.addedItems[itemName].object;
         this.$('#inputObjectName').val(object.name);
 
@@ -386,11 +423,18 @@ Main = (function() {
         object.rotate = this.gatherVectorInput('rotate');
         object.translate = this.gatherVectorInput('translate');
 
-        this.addItem({
+        var itemToAdd = {
           name: object.name,
           type: 'item',
           object: object
-        });
+        };
+
+        if (this.isEditing) {
+          this.editItem(itemToAdd);
+        } else {
+          this.addItem(itemToAdd);
+        }
+        this.onCancelEditClick(); // added/edited item, now cancel out of editing
         this.renderTree();
       },
 
@@ -438,6 +482,7 @@ Main = (function() {
       events: {
         'changed .material-select' : 'onMaterialSelect',
         'click .btn-add-material' : 'onAddClick',
+        'click .btn-cancel-material' : 'onCancelEditClick',
         'click .btn-preview-material' : 'onPreviewMaterialClick',
         'click .btn-remove-selected-materials' : 'removeSelectedItems',
       },
@@ -536,7 +581,7 @@ Main = (function() {
       },
 
       // called when the edit icon is clicked for materials 
-      editItem: function(itemName) {
+      populateEditableInputs: function(itemName) {
         var material = this.addedItems[itemName].material;
         this.$('#inputMatName').val(material.name);
         
@@ -562,12 +607,18 @@ Main = (function() {
       onAddClick: function(event) {
         var material = this.gatherMaterialFromInput();
 
-        this.addItem({
+        var itemToAdd = {
           name: material.name,
           type: 'item',
           material: material,
-          additionalParameters: {id: 'lolol' },
-        });
+        };
+
+        if (this.isEditing) {
+          this.editItem(itemToAdd);
+        } else {
+          this.addItem(itemToAdd);
+        }
+        this.onCancelEditClick(); // added/edited item, now cancel out of editing
         this.renderTree();
       },
 

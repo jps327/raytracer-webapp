@@ -69,6 +69,12 @@
   margin-top: 4px;
 }
 
+.fuelux .createSceneModal .btn-cancel-light,
+.fuelux .createSceneModal .btn-cancel-material,
+.fuelux .createSceneModal .btn-cancel-object {
+  display: none;
+}
+
 .createSceneModal .tree .icon-pencil:hover {
   opacity: 1;
 }
