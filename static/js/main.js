@@ -8,6 +8,8 @@ Main = (function() {
   var currentView = Router.HOME;
   var selectedScene = null; // the scene we are viewing
 
+  var NO_PARENT = "###noparent###";
+
   var Scene = Backbone.Model.extend({
     idAttribute: '_id',
     initialize: function() {
@@ -68,13 +70,14 @@ Main = (function() {
             newData.push(data[childName]);
           }
           callback({ data: newData });
+
         } else {
           // this is not a folder, i.e. this is the root,
           // so only add items that have no parent
           var data = $.extend(true, {}, this._dataMap);
           var newData = [];
           for (var name in data) {
-            if (!data[name].parent) {
+            if (data[name].parent === NO_PARENT) {
               newData.push(data[name]);
             }
           }
@@ -449,7 +452,8 @@ Main = (function() {
           var property = objectProperties[propertyName];
           if (property.type === 'vector') {
             object[propertyName] = this.gatherVectorInput(propertyName);
-          } else if (property.type === 'material-select') {
+          } else if (property.type === 'material-select' ||
+              property.type === 'group-select') {
             object[propertyName] = this.$("#" + propertyName)
               .select('selectedItem').value;
           } else {
@@ -469,6 +473,33 @@ Main = (function() {
           object: object
         };
 
+        var itemDoesntExist = !this.getAddedItems()[itemToAdd.name];
+        if (itemDoesntExist) {
+          itemToAdd.parent = NO_PARENT;
+        } else {
+          itemToAdd.parent = this.getAddedItems()[itemToAdd.name].parent;
+        }
+
+        // start out group
+        if (object.type === 'group' && itemDoesntExist) {
+          itemToAdd.children = [];
+        }
+
+        if (itemToAdd.parent !== NO_PARENT) {
+          // find this item's parent and remove this item
+          var parentGroup = this.getAddedItems()[itemToAdd.parent];
+          console.log(parentGroup.children);
+          parentGroup.children = _.reject(parentGroup.children,
+              function(childName) { return childName === itemToAdd.name; });
+        }
+
+        // now set the new parent, and add this child
+        itemToAdd.parent = object.group;
+        if (itemToAdd.parent !== NO_PARENT) {
+          var parentGroup = this.getAddedItems()[itemToAdd.parent];
+          parentGroup.children.push(itemToAdd.name);
+        }
+
         if (this.isEditing) {
           this.editItem(itemToAdd);
         } else {
@@ -486,8 +517,8 @@ Main = (function() {
         properties.translate = {label:'Translate', type:'vector', val:{x:0,y:0,z:0}};
         if (data.value !== 'group') {
           properties.shader = {label: 'Material', type: 'material-select'};
-          properties.group = {label: 'Group', type: 'group-select'};
         }
+        properties.group = {label: 'Group', type: 'group-select'};
 
         // render the form
         var template = _.template($('#t-object-properties-form').html());
@@ -497,12 +528,12 @@ Main = (function() {
           properties: properties,
         }));
 
+        var selectBoxItem = _.template($('#t-select-box-item').html());
         // if this is not a Group, then add the select-materials dropdown items
-        // and the select-group dropdown
         if (this.selectedItem !== 'group') {
+
           // set the select-materials dropdown
           var materials = this.getMaterialsTab().getAddedItems();
-          var selectBoxItem = _.template($('#t-select-box-item').html());
           var materialDropdownMenu = this.$('.object-materials-dropdown-box');
           materialDropdownMenu.empty();
           for (var materialName in materials) {
@@ -513,21 +544,25 @@ Main = (function() {
             }));
           }
           this.$('.object-material-select').select();
-
-          // set the select-group dropdown
-          var groups = this.getAllGroupItems();
-          var groupDropdownMenu = this.$('.object-group-dropdown-box');
-          groupDropdownMenu.empty();
-          for (var groupName in groups) {
-            var group = groups[groupName].object;
-            groupDropdownMenu.append(selectBoxItem({
-              value: group.name,
-              label: group.name
-            }));
-          }
-          this.$('.object-group-select').select();
-
         }
+
+        // add the select-group dropdown
+        var groups = this.getAllGroupItems();
+        var groupDropdownMenu = this.$('.object-group-dropdown-box');
+        groupDropdownMenu.empty();
+        groupDropdownMenu.append(selectBoxItem({
+          value: NO_PARENT, label: "No Group"
+        }));
+
+        for (var groupName in groups) {
+          var group = groups[groupName].object;
+          groupDropdownMenu.append(selectBoxItem({
+            value: group.name,
+            label: group.name
+          }));
+        }
+        this.$('.object-group-select').select();
+
       },
     });
 
