@@ -1430,7 +1430,7 @@ var RayTracer = (function() {
       );
   };
 
-  var sceneToRender = basicBoxTransformation;
+  var sceneToRender = basicLambertianScene;
 
   // Go through an entire JSON object and turn all numeric strings to
   // actual numbers
@@ -1515,17 +1515,13 @@ var RayTracer = (function() {
     return surface;
   };
 
-  // Given a JSON object representing a scene, turn it into a
-  // renderable Scene object
-  // JSON Scene needs: width, height, camera, lights list, materials map,
-  // and objects list
-  var createRenderableSceneFromJSON = function(jsonScene) {
+  var getSceneFromJSON = function(jsonScene) {
     sanitizeNumericJSON(jsonScene);
     sanitizeVectorJSON(jsonScene);
-
+    
     // get jsonScene properties
-    var width = parseInt(jsonScene.width);
-    var height = parseInt(jsonScene.height);
+    var width = jsonScene.width;
+    var height = jsonScene.height;
     var camera = jsonScene.camera;
     var lights = jsonScene.lights;
     var materials = jsonScene.materials;
@@ -1567,10 +1563,36 @@ var RayTracer = (function() {
       scene.addSurface(surface);
     }
 
+    return scene;
+  };
+
+  // Given a JSON object representing a scene, turn it into a
+  // renderable Scene object
+  // JSON Scene needs: width, height, camera, lights list, materials map,
+  // and objects list
+  var createRenderableSceneFromJSON = function(jsonScene) {
+    var width = parseFloat(jsonScene.width);
+    var height = parseFloat(jsonScene.height);
+
+    var scene = getSceneFromJSON(jsonScene);
     scene
       .setImageDimensions(width, height)
       .setTransform()
       .initializeAABB(); // prepares scene for rendering
+    return scene;
+  };
+
+  // creates a renderable scene to be rendered onto an html canvas
+  var createRenderableCanvasSceneFromJSON = function(jsonScene) {
+    sanitizeNumericJSON(jsonScene);
+    sanitizeVectorJSON(jsonScene);
+    var canvasID = jsonScene.canvasID;
+
+    var scene = getSceneFromJSON(jsonScene);
+    scene
+      .setImageCanvas(canvasID)
+      .setTransform()
+      .initializeAABB(); // prepare scene for rendering
     return scene;
   };
 
@@ -1581,6 +1603,7 @@ var RayTracer = (function() {
     renderPixel: renderPixel,
     renderImage: renderImage,
     createRenderableSceneFromJSON: createRenderableSceneFromJSON,
+    createRenderableCanvasSceneFromJSON: createRenderableCanvasSceneFromJSON,
     createScene: function() {
       return new Scene();
     },

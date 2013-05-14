@@ -20,6 +20,19 @@ Client = (function() {
   // Client-server interaction
   var socket = io.connect();
 
+  var disconnectFromScene = function(sceneID) {
+    var clientID = sceneConnections[sceneID].clientID;
+
+    // tell the server that we no longer want to render this scene
+    socket.emit('disconnectFromScene', {
+      sceneID: sceneID,
+      clientID: clientID
+    });
+
+    sceneConnections[sceneID] = undefined;
+    delete sceneConnections[sceneID];
+  };
+
   var connectToScene = function(sceneID) {
     // get the json representation of the scene we want to connect to,
     // turn it into a ray-traceable scene, then tell the server
@@ -64,6 +77,11 @@ Client = (function() {
   socket.on('jobAssignment', function(data) {
     var sceneID = data.sceneID;
     var job = data.job;
+    var sceneConnection = sceneConnections[sceneID];
+    if (!sceneConnection) {
+      return;
+    }
+
     var scene = sceneConnections[sceneID].scene;
 
     console.log("GOT ASSIGNED A JOB FOR " + sceneID);
@@ -103,7 +121,7 @@ Client = (function() {
     // it is ready
     var sceneID = data.sceneID;
 
-      // update gallery item image
+    // update gallery item image
     var galleryItems = Main.getGalleryItems();
     var item = galleryItems.get(sceneID);
     item.set({
@@ -112,14 +130,20 @@ Client = (function() {
     });
 
     if (Main.getCurrentView().id === Router.SCENE) {
-      Main.getCurrentView().displayFinishedImage();
+      // update selected scene
+      Main.getSelectedScene().set({
+        finishedRendering: true,
+        thumbnailURL: "../raytraced_images/" + sceneID + ".png"
+      });
+      Main.getCurrentView().render();
     }
     console.log("FINISHED IMAGE");
   });
 
   // Create the Client object
   return {
-    connectToScene: connectToScene
+    connectToScene: connectToScene,
+    disconnectFromScene: disconnectFromScene,
   };
 
 })();

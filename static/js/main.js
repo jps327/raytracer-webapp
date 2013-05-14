@@ -63,6 +63,34 @@ Main = (function() {
       },
     };
 
+    var ConnectSceneButtonView = Backbone.View.extend({
+      connected: false,
+      events: {
+        'click' : 'onConnectClick',
+      },
+
+      onConnectClick: function(event) {
+        this.connected = !this.connected;
+        var btn = $(event.target);
+        var url = '';
+        if (this.connected) {
+          btn.text('Connected');
+          btn.addClass('btn-success');
+          btn.removeClass('btn-primary');
+
+          // now connect to the scene
+          Client.connectToScene(this.model.id);
+        } else {
+          btn.text('Connect');
+          btn.addClass('btn-primary');
+          btn.removeClass('btn-success');
+
+          // now disconnect from the scene
+          Client.disconnectFromScene(this.model.id);
+        }
+      },
+    });
+
     // Base View for the ObjectCreator and MaterialCreator Views
     var BaseCreatorView = Backbone.View.extend({
       selectedItem: "", // what item type we've currently selected
@@ -76,11 +104,15 @@ Main = (function() {
       },
 
       addItem: function(item) {
-        this.addedItems.push(item);
+        this.addedItems[item.name] = item;
       },
 
       getAddedItems: function() {
         return this.addedItems;
+      },
+
+      getAddedItemsAsArray: function() {
+        return Util.objectToArray(this.addedItems);
       },
 
       isObjectCreator: function() {
@@ -97,12 +129,31 @@ Main = (function() {
         return {r: rgb[0], g: rgb[1], b: rgb[2]};
       },
 
+      rgbToHexString: function(rgb) {
+        var toHex = function(c) {
+          var hex = c.toString(16);
+          return hex.length == 1 ? "0" + hex : hex;
+        };
+
+        for (var id in rgb) {
+          rgb[id] = Math.round(rgb[id] * 255);
+        }
+
+        return "#" + toHex(rgb.r*255) + toHex(rgb.g*255) + toHex(rgb.b*255);
+      },
+
       gatherVectorInput: function(id) {
         return {
           x: this.$("#" + id + "-x").val(),
           y: this.$("#" + id + "-y").val(),
           z: this.$("#" + id + "-z").val(),
         };
+      },
+
+      setVectorInput: function(id, vector) {
+        this.$("#" + id + "-x").val(vector.x);
+        this.$("#" + id + "-y").val(vector.y);
+        this.$("#" + id + "-z").val(vector.z);
       },
 
       render: function() {
@@ -132,20 +183,63 @@ Main = (function() {
         }
 
         this.renderTree();
+
         return this;
+      },
+
+      getTreeElement: function() {
+        return this.$(".added-" + this.creatorType + "s-tree");
       },
 
       renderTree: function() {
         var addedItemsEl = this.$(".added-"+this.creatorType+"s");
-        var treeClass = "added-"+this.creatorType+"s-tree";
         var treeTemplate = _.template($('#t-item-folder-tree').html());
+        var treeClass = "added-"+this.creatorType+"s-tree";
+
+        this.getTreeElement().remove();
         addedItemsEl.empty();
         addedItemsEl.html(treeTemplate({ className: treeClass }));
-        this.$("." + treeClass).tree({
-          dataSource: new TreeDataSource(this.addedItems),
+
+        var addedItems = this.getAddedItemsAsArray();
+        this.getTreeElement().tree({
+          dataSource: new TreeDataSource(addedItems),
+          multiSelect: true,
         });
 
+        // add the edit-icons and link them to their respective items
+        var treeItems = this.$('.tree-item:not(:first)');
+        for (var i = 0; i < treeItems.length; i++) {
+          var item = addedItems[i];
+          var treeItem = $(treeItems[i]);
+          var editIcon = $('<i class="icon-pencil"></i>');
+          editIcon.data('name', item.name);
+          treeItem.append(editIcon);
+          editIcon.on('click', (function(event) {
+            event.stopPropagation();
+            var itemName = $(event.target).data('name');
+            this.editItem(itemName);
+          }).bind(this));
+        }
+
+        // make sure that pencil icons stay floating to the right
+        // (fuelux's Tree component keeps trying to move it back to the left)
+        this.getTreeElement().on('click', (function() {
+          this.$('.icon-pencil').removeClass('icon-ok');
+          this.$('.icon-pencil').removeClass('tree-dot');
+        }).bind(this));
+
         return this;
+      },
+
+      removeSelectedItems: function() {
+        var treeEl = this.getTreeElement();
+        var selectedItems = treeEl.tree('selectedItems');
+        for (var i = 0; i < selectedItems.length; i++) {
+          var itemName = selectedItems[i].name;
+          this.addedItems[itemName] = undefined;
+          delete this.addedItems[itemName];
+        }
+        this.renderTree();
       },
     });
 
@@ -155,10 +249,11 @@ Main = (function() {
     // of the possible types and their properties
     var LightCreatorView = BaseCreatorView.extend({
       el: $('.lights-tab'),
-      addedItems: [],
+      addedItems: {},
 
       events: {
         'click .add-light' : 'onAddClick',
+        'click .btn-remove-selected-lights' : 'removeSelectedItems',
       },
 
       initialize: function() {
@@ -179,16 +274,27 @@ Main = (function() {
         });
         this.renderTree();
       },
+
+      // called when the edit icon is clicked
+      editItem: function(itemName) {
+        var light = this.addedItems[itemName].light;
+        this.$('#inputLightName').val(light.name);
+        this.setVectorInput('inputLightPos', light.position);
+
+        this.$('#inputLightColor').parent().colorpicker('setValue', 'rgb(255,255,255)');
+        this.$('#inputLightIntensity').val(light.intensity);
+      }
     });
 
     // View for the Objects tab in the Create Scene modal dialog
     var ObjectCreatorView = BaseCreatorView.extend({
       el: $('.objects-tab'),
-      addedItems: [],
+      addedItems: {},
 
       events: {
         'changed .object-select' : 'onObjectSelect',
         'click .add-object' : 'onAddClick',
+        'click .btn-remove-selected-objects' : 'removeSelectedItems',
       },
 
       itemTypes: {
@@ -278,8 +384,8 @@ Main = (function() {
           var selectBoxItem = _.template($('#t-select-box-item').html());
           var dropdownMenu = this.$('.object-materials-dropdown-box');
           dropdownMenu.empty();
-          for (var i = 0; i < materials.length; i++) {
-            var material = materials[i];
+          for (var materialName in materials) {
+            var material = materials[materialName].material;
             dropdownMenu.append(selectBoxItem({
               value: material.name,
               label: material.name,
@@ -293,11 +399,13 @@ Main = (function() {
     // View for the Materials tab in the Create Scene modal dialog
     var MaterialCreatorView = BaseCreatorView.extend({
       el: $('.materials-tab'),
-      addedItems: [],
+      addedItems: {},
 
       events: {
         'changed .material-select' : 'onMaterialSelect',
-        'click .add-material' : 'onAddClick',
+        'click .btn-add-material' : 'onAddClick',
+        'click .btn-preview-material' : 'onPreviewMaterialClick',
+        'click .btn-remove-selected-materials' : 'removeSelectedItems',
       },
 
       itemTypes: {
@@ -325,7 +433,7 @@ Main = (function() {
         this.render();
       },
 
-      onAddClick: function(event) {
+      gatherMaterialFromInput: function() {
         var material = {};
         material.name = this.$('#inputMatName').val();
         material.type = this.selectedItem;
@@ -341,10 +449,66 @@ Main = (function() {
           }
         }
 
+        return material;
+      },
+
+      onPreviewMaterialClick: function(event) {
+        var material = this.gatherMaterialFromInput();
+
+        var materials = {};
+        materials[material.name] = material;
+
+        var camera = {
+          eye: { x:0, y:0, z:1 },
+          viewDirection: { x:0, y:0, z:-1 },
+          up: { x:0, y:1, z:0 },
+          projectionDistance: 1,
+        };
+
+        var light = {
+          position: { x:-2, y:3, z:1 },
+          color: { r:1, g: 1, b: 1},
+          intensity: 1
+        };
+
+        var sphere = {
+          type: 'sphere',
+          center: { x:0, y:0, z:-5 },
+          radius: 1,
+          shader: material.name,
+          scale: { x:1, y:1, z:1 },
+          rotate: { x:0, y:0, z:0 },
+          translate: { x:0, y:0, z:0 },
+        };
+
+        var width = 200;
+        var height = 200;
+        var canvasID = 'preview-material-canvas';
+
+        var scene = {
+          width: width,
+          height: height,
+          camera: camera,
+          canvasID: canvasID,
+          lights: [ light ],
+          materials: materials,
+          objects: [ sphere ],
+        }
+
+        var rtScene = RayTracer.createRenderableCanvasSceneFromJSON(scene);
+
+        $('.preview-material-popup').show();
+        RayTracer.renderImage(rtScene);
+      },
+
+      onAddClick: function(event) {
+        var material = this.gatherMaterialFromInput();
+
         this.addItem({
           name: material.name,
           type: 'item',
-          material: material
+          material: material,
+          additionalParameters: {id: 'lolol' },
         });
         this.renderTree();
       },
@@ -421,10 +585,6 @@ Main = (function() {
           url: '/api/getMyScenes',
           data: { acid: Init.getAcid() },
           success: (function(res) {
-            console.log("FUCK");
-            console.log(Init.getAcid());
-            console.log(res);
-
             // populate the load-scenes dropdown box
             var selectBoxItem = _.template($('#t-select-box-item').html());
             var dropdownMenu = this.$('.load-scene-dropdown-box');
@@ -476,6 +636,7 @@ Main = (function() {
       el: $('.createSceneModal'),
       events: {
         'click .btn-done' : 'onDoneClick',
+        'click .btn-preview-scene' : 'onPreviewSceneClick',
       },
 
       initialize: function() {
@@ -507,6 +668,32 @@ Main = (function() {
         return this.objectsTab;
       },
 
+      onPreviewSceneClick: function() {
+        var scene = this.getSceneAsJSON();
+        console.log(scene);
+
+        // set all materials to be lambertian
+        for (var key in scene.materials) {
+          var material = scene.materials[key];
+          material.type = 'lambertian';
+          material.diffuseColor = { r: 0.75, g: 0.75, b: 0.75 };
+        }
+
+        var canvasID = 'preview-scene-canvas';
+        var width = 300;
+        var height = 200;
+
+        scene.canvasID = canvasID;
+        scene.width = width;
+        scene.height = height;
+        $("#" + canvasID).attr('height', height);
+        $("#" + canvasID).attr('width', width);
+
+        var rtScene = RayTracer.createRenderableCanvasSceneFromJSON(scene);
+        $('.preview-scene-popup').show();
+        RayTracer.renderImage(rtScene);
+      },
+
       onDoneClick: function() {
         // Create the Scene as a JSON object
         var scene = this.getSceneAsJSON();
@@ -520,7 +707,7 @@ Main = (function() {
           },
           success: (function(res) {
             console.log(scene);
-            console.log('Success!');
+            console.log('Successful scene creation!');
             gallery.add(new GalleryItem(res.galleryItem));
             this.$el.modal('hide');
           }).bind(this),
@@ -645,9 +832,9 @@ Main = (function() {
         // returns a list of lights
         var lights = [];
         var addedLights = this.getLightsTab().getAddedItems();
-        for (var i = 0; i < addedLights.length; i++) {
-          var light = addedLights[i].light;
-          lights.push(light);
+        for (var lightName in addedLights) {
+          var light = addedLights[lightName].light;
+          lights.push(Util.clone(light));
         }
         return lights;
       },
@@ -656,9 +843,9 @@ Main = (function() {
         // returns a map of materialName -> materialProperties
         var materials = {};
         var addedMaterials = this.getMaterialsTab().getAddedItems();
-        for (var i = 0; i < addedMaterials.length; i++) {
-          var material = addedMaterials[i].material;
-          materials[material.name] = material;
+        for (var materialName in addedMaterials) {
+          var material = addedMaterials[materialName].material;
+          materials[material.name] = Util.clone(material);
         }
         return materials;
       },
@@ -667,9 +854,9 @@ Main = (function() {
         // TODO: handle grouping
         var objects = [];
         var addedObjects = this.getObjectsTab().getAddedItems();
-        for (var i = 0; i < addedObjects.length; i++) {
-          var object = addedObjects[i].object;
-          objects.push(object);
+        for (var objectName in addedObjects) {
+          var object = addedObjects[objectName].object;
+          objects.push(Util.clone(object));
         }
         return objects;
 
@@ -768,7 +955,16 @@ Main = (function() {
 
         if (selectedScene.get('finishedRendering')) {
           this.displayFinishedImage();
+          this.$('.btn-connect')[0].remove();
+        } else {
+          if (this.connectButtonView) {
+            this.connectButtonView.remove();
+          }
+          this.connectButtonView = new ConnectSceneButtonView({
+            model: selectedScene
+          }).setElement(this.$('.btn-connect'));
         }
+
         return this;
       },
     });
@@ -776,13 +972,10 @@ Main = (function() {
     var GalleryItemView = Backbone.View.extend({
       tagName: 'li',
       template: _.template($('#t-gallery-thumbnail').html()),
-      events: {
-        "click .btn-connect" : "onConnectClick",
-      },
-      connected: false,
 
       initialize: function(options) {
         this.model.on('change:thumbnailURL', this.onChangeThumbnail, this);
+        this.connectButtonView = new ConnectSceneButtonView({ model: this.model });
         this.render();
       },
 
@@ -793,26 +986,14 @@ Main = (function() {
       render: function() {
         this.$el.addClass('span4');
         this.$el.html(this.template({ scene: this.model.toJSON() }));
-        return this;
-      },
 
-      onConnectClick: function(event) {
-        this.connected = !this.connected;
-        var btn = $(event.target);
-        var url = '';
-        if (this.connected) {
-          btn.text('Connected');
-          btn.addClass('btn-success');
-          btn.removeClass('btn-primary');
-
-          // now connect to the scene
-          Client.connectToScene(this.model.id);
-        } else {
-          btn.text('Connect');
-          btn.addClass('btn-primary');
-          btn.removeClass('btn-success');
-          // TODO: allow disconnecting from scene
+        // register the connect button view
+        var btn = this.$('.btn-connect')[0];
+        if (btn) {
+          this.connectButtonView.setElement(btn);
         }
+
+        return this;
       },
     });
 

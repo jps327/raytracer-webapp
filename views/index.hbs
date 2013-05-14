@@ -348,7 +348,12 @@
             </form>
           </div>
 
-          <div class="pull-right added-lights"></div>
+          <div class="pull-right">
+            <div class="added-lights"></div>
+            <button type="button" class="btn btn-small btn-remove-selected-lights">
+              Remove
+            </button>
+          </div>
         </div>
 
         <!-- Material Creation -->
@@ -383,14 +388,20 @@
                 </div>
 
                 <div class="material-properties-form"></div>
-                <input type="button" class="add-material btn btn-primary"
+                <input type="button" class="btn-add-material btn btn-primary"
                   value="Add" />
-
+                <input type="button" class="btn-preview-material btn"
+                  value="Preview Material" />
               </fieldset>
             </form>
           </div>
 
-          <div class="pull-right added-materials"></div>
+          <div class="pull-right">
+            <div class="added-materials"></div>
+            <button type="button" class="btn btn-small btn-remove-selected-materials">
+              Remove
+            </button>
+          </div>
         </div>
 
         <!-- Object Creation -->
@@ -432,7 +443,12 @@
             </form>
           </div>
 
-          <div class="pull-right added-objects"></div>
+          <div class="pull-right">
+            <div class="added-objects"></div>
+            <button type="button" class="btn btn-small btn-remove-selected-objects">
+              Remove
+            </button>
+          </div>
         </div>
         <!-- End Object Creation Tab -->
 
@@ -440,12 +456,28 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn" data-dismiss="modal" aria-hidden="true">
-        Close
-      </button>
-      <button class="btn-done btn btn-primary">Done</button>
+      <div class="pull-left">
+        <button class="btn-preview-scene btn btn-success">
+          Preview Scene
+        </button>
+      </div>
+      <div class="pull-right">
+        <button class="btn" data-dismiss="modal" aria-hidden="true">
+          Close
+        </button>
+        <button class="btn-done btn btn-primary">Done</button>
+      </div>
+    </div>
+
+    <div class="preview-material-popup">
+      <canvas id="preview-material-canvas" width="200px" height="200px">
+      </canvas>
+    </div>
+    <div class="preview-scene-popup">
+      <canvas id="preview-scene-canvas"></canvas>
     </div>
   </div>
+
 
   <script id="t-finished-image" type="text/template">
     <img src="<%= imgSrc %>"></img>
@@ -485,6 +517,7 @@
     <% if (!scene.finishedRendering) { %>
       <p><%= scene.numUsersConnected %> users connected</p>
     <% } %>
+    <div class="btn btn-primary btn-connect">Connect</div>
   </script>
 
   <script id="t-select-box-item" type="text/template">
@@ -505,6 +538,7 @@
       <div class="tree-item" style="display:none;">
         <i class="tree-dot"></i>
         <div class="tree-item-name"></div>
+        <i class="tree-dot"></i>
       </div>
     </div>
   </script>

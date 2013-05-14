@@ -62,3 +62,48 @@
   margin-top: 20px;
   width: 180px;
 }
+
+.createSceneModal .btn-remove-selected-lights,
+.createSceneModal .btn-remove-selected-materials,
+.createSceneModal .btn-remove-selected-objects {
+  margin-top: 4px;
+}
+
+.createSceneModal .tree .icon-pencil:hover {
+  opacity: 1;
+}
+
+.createSceneModal .tree .icon-pencil {
+  opacity: 0.5;
+  float: right;
+}
+
+.preview-scene-popup,
+.preview-material-popup {
+  background-color: #fff;
+  border: 2px solid black;
+  border-radius: 5px;
+  display: none;
+  margin-top: -100px;
+  position: absolute;;
+  top: 50%;
+}
+
+.preview-material-popup {
+  border-left: none;
+  height: 199px;
+  right: -202px;
+  width: 200px;
+}
+
+.preview-scene-popup {
+  border-right: none;
+  height: 199px;
+  left: -302px;
+  width: 300px;
+}
+
+.preview-scene-popup #preview-scene-canvas,
+.preview-material-popup #preview-material-canvas {
+  margin-top: -1px;
+}

@@ -204,6 +204,8 @@
 		},
 		
 		setValue: function(newColor) {
+                console.log('shit');
+                console.log(newColor);
 			this.color = new Color(newColor);
 			this.picker.find('i')
 				.eq(0).css({left: this.color.value.s*100, top: 100 - this.color.value.b*100}).end()

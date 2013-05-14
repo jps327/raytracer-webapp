@@ -205,6 +205,7 @@ RTScene.prototype.broadcastFinishedImage = function() {
       }
     }).bind(this));
 
+  // remove this scene from being scheduled for work
   scenes[this.id] = undefined;
   delete scenes[this.id];
 };
@@ -344,15 +345,65 @@ io.sockets.on('connection', function(socket) {
     }
   });
 
+  // disconnection because the client clicked on 'disconnect'
+  socket.on('disconnectFromScene', function(data) {
+    var clientID = data.clientID;
+    var scene = scenes[data.sceneID];
+    var disconnectedClient = scene.getClientByID(clientID);
+
+    if (!disconnectedClient) {
+      // client no longer exists for some reason
+      return;
+    }
+
+    // add the client's job back to the queue
+    if (disconnectedClient.job) {
+      scene.pushJob(disconnectedClient.job);
+    }
+
+    // release memory for this client
+    scene.removeClient(clientID);
+
+    // remove this clientSceneConnection from the socket
+    for (var i = 0; i < socket.clientSceneConnections.length; i++) {
+      var connection = socket.clientSceneConnections[i];
+      if (connection.scene.id === data.sceneID &&
+          connection.clientID === clientID) {
+        socket.clientSceneConnections.splice(i, 1);
+        break;
+      }
+    }
+
+    // decrease the numUsersConnected for this scene
+    Scene
+      .findOne({ '_id' : data.sceneID })
+      .exec(function(err, dbScene) {
+        if (err || !dbScene) {
+          console.log("Could not find scene when trying to disconnect");
+        } else {
+          dbScene.numUsersConnected = dbScene.numUsersConnected - 1;
+          dbScene.save(function(err) {
+            if (!err) {
+              // no error
+            } else {
+              // TODO: emit to the client that there was an error disconnecting
+              // so the button doesn't change to 'Disconnected'
+            }
+          });
+        }
+      });
+  });
+
+  // disconnection because the client quit the browser or exited the app somehow
   socket.on('disconnect', function() {
-    // TODO: update DB and decrease numUsersConnected from all disconnected
-    // scenes
+    var sceneIDsToDisconnect = [];
 
     // break all client/scene connections being held by this socket
     for (var i = 0; i < socket.clientSceneConnections.length; i++) {
       var clientSceneConnection = socket.clientSceneConnections[i];
       var clientID = clientSceneConnection.clientID;
       var scene = clientSceneConnection.scene;
+      sceneIDsToDisconnect.push(scene.id);
 
       var brokenClient = scene.getClientByID(clientID);
       if (!brokenClient) {
@@ -365,9 +416,20 @@ io.sockets.on('connection', function(socket) {
         scene.pushJob(brokenClient.job);
       }
 
-      // release memory
+      // release memory for this client
       scene.removeClient(clientID);
     }
+
+    Scene.update(
+      { _id: { $in: sceneIDsToDisconnect}},
+      { $inc: { numUsersConnected: -1}},
+      { multi: true },
+      function(err) {
+        if (err) {
+          // nothing to do really, user already disconnected
+        }
+      }
+    );
   });
 });
 

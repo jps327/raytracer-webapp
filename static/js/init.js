@@ -28,6 +28,41 @@ window.console = window.console || (function(){
     return c;
 })();
 
+var Util = (function() {
+  // clones any object
+  var clone = function(obj) {
+    var o = {};
+    for (var key in obj) {
+      o[key] = obj[key];
+    }
+    return o;
+  };
+
+  // turns an object into an array of its elements
+  var objectToArray = function(obj) {
+    var arr = [];
+    for (var key in obj) {
+      arr.push(obj[key]);
+    }
+    return arr;
+  };
+
+  // turns an object into an array of its keys
+  var objectToKeyArray = function(obj) {
+    var arr = [];
+    for (var key in obj) {
+      arr.push(key);
+    }
+    return arr;
+  };
+
+  return {
+    clone: clone,
+    objectToArray: objectToArray,
+    objectToKeyArra: objectToKeyArray,
+  };
+})();
+
 var Init = (function() {
   var storedAcid = "";
   var storedFbId = "";
@@ -162,6 +197,3 @@ var Init = (function() {
   js.src = "//connect.facebook.net/en_US/all.js";
   ref.parentNode.insertBefore(js, ref);
 }(document));
-
-
-
