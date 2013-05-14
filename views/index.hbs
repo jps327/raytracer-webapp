@@ -603,6 +603,15 @@
               </button>
               <ul class="object-materials-dropdown-box dropdown-menu"></ul>
             </div>
+          <% } else if (property.type === 'object-select') { %>
+            <div id="<%= id %>" data-resize="auto"
+              class="select btn-group object-group-select">
+              <button data-toggle="dropdown" class="btn dropdown-toggle">
+                <span class="dropdown-label"></span>
+                <span class="caret"></span>
+              </button>
+              <ul class="object-group-dropdown-box dropdown-menu"></ul>
+            </div>
           <% } %>
         </div>
       </div>

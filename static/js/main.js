@@ -52,14 +52,34 @@ Main = (function() {
   };
 
   var init = function() {
-    var TreeDataSource = function(dataList) {
-      this._data = dataList;
+    var TreeDataSource = function(dataMap) {
+      this._dataMap = Util.clone(dataMap);
     };
 
     TreeDataSource.prototype = {
       data: function(options, callback) {
-        var data = $.extend(true, [], this._data);
-        callback({ data: data });
+        if (options.type === "folder") {
+          // if this is a folder, only pass along the data in this folder
+          var data = $.extend(true, {}, this._dataMap);
+          var childrenNames = $.extend(true, [], options.children);
+          var newData = [];
+          for (var i = 0; i < childrenNames.length; i++) {
+            var childName = childrenNames[i];
+            newData.push(data[childName]);
+          }
+          callback({ data: newData });
+        } else {
+          // this is not a folder, i.e. this is the root,
+          // so only add items that have no parent
+          var data = $.extend(true, {}, this._dataMap);
+          var newData = [];
+          for (var name in data) {
+            if (!data[name].parent) {
+              newData.push(data[name]);
+            }
+          }
+          callback({ data: newData });
+        }
       },
     };
 
@@ -210,13 +230,13 @@ Main = (function() {
         addedItemsEl.empty();
         addedItemsEl.html(treeTemplate({ className: treeClass }));
 
-        var addedItems = this.getAddedItemsAsArray();
         this.getTreeElement().tree({
-          dataSource: new TreeDataSource(addedItems),
+          dataSource: new TreeDataSource(this.getAddedItems()),
           multiSelect: true,
         });
 
         // add the edit-icons and link them to their respective items
+        var addedItems = this.getAddedItemsAsArray();
         var treeItems = this.$('.tree-item:not(:first)');
         for (var i = 0; i < treeItems.length; i++) {
           var item = addedItems[i];
@@ -280,7 +300,16 @@ Main = (function() {
     // of the possible types and their properties
     var LightCreatorView = BaseCreatorView.extend({
       el: $('.lights-tab'),
-      addedItems: {},
+      addedItems: {
+        rofl: {name: 'rofl', type: 'folder', light: {},
+                parent: '', children: ['yar']},
+        harp: {name: 'harp', type: 'folder', light: {},
+              children: [ 'b' ]},
+        yar: {name: 'yar', type: 'item', light: {}, parent: 'rofl'},
+        a: {name: 'a', type: 'item', light: {}},
+        b: {name: 'b', type: 'folder', light: {}, parent: 'harp', children: ['c']},
+        c: {name: 'c', type: 'item', light: {}, parent: 'b'},
+      },
 
       events: {
         'click .btn-add-light' : 'onAddClick',
@@ -367,6 +396,17 @@ Main = (function() {
         return mainViews[Router.HOME].getCreateSceneDialog().getMaterialsTab();
       },
 
+      getAllGroupItems: function() {
+        var addedItems = this.getAddedItems();
+        var result = {};
+        for (var itemName in addedItems) {
+          if (addedItems[itemName].type === 'folder') {
+            result[itemName] = addedItems[itemName]
+          }
+        }
+        return result;
+      },
+
       // called when the edit icon is clicked for objects
       populateEditableInputs: function(itemName) {
         var object = this.addedItems[itemName].object;
@@ -425,7 +465,7 @@ Main = (function() {
 
         var itemToAdd = {
           name: object.name,
-          type: 'item',
+          type: object.type === 'group' ? 'folder' : 'item',
           object: object
         };
 
@@ -446,6 +486,7 @@ Main = (function() {
         properties.translate = {label:'Translate', type:'vector', val:{x:0,y:0,z:0}};
         if (data.value !== 'group') {
           properties.shader = {label: 'Material', type: 'material-select'};
+          properties.group = {label: 'Group', type: 'group-select'};
         }
 
         // render the form
@@ -457,19 +498,35 @@ Main = (function() {
         }));
 
         // if this is not a Group, then add the select-materials dropdown items
+        // and the select-group dropdown
         if (this.selectedItem !== 'group') {
+          // set the select-materials dropdown
           var materials = this.getMaterialsTab().getAddedItems();
           var selectBoxItem = _.template($('#t-select-box-item').html());
-          var dropdownMenu = this.$('.object-materials-dropdown-box');
-          dropdownMenu.empty();
+          var materialDropdownMenu = this.$('.object-materials-dropdown-box');
+          materialDropdownMenu.empty();
           for (var materialName in materials) {
             var material = materials[materialName].material;
-            dropdownMenu.append(selectBoxItem({
+            materialDropdownMenu.append(selectBoxItem({
               value: material.name,
               label: material.name,
             }));
           }
           this.$('.object-material-select').select();
+
+          // set the select-group dropdown
+          var groups = this.getAllGroupItems();
+          var groupDropdownMenu = this.$('.object-group-dropdown-box');
+          groupDropdownMenu.empty();
+          for (var groupName in groups) {
+            var group = groups[groupName].object;
+            groupDropdownMenu.append(selectBoxItem({
+              value: group.name,
+              label: group.name
+            }));
+          }
+          this.$('.object-group-select').select();
+
         }
       },
     });

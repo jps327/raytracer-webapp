@@ -31,11 +31,7 @@ window.console = window.console || (function(){
 var Util = (function() {
   // clones any object
   var clone = function(obj) {
-    var o = {};
-    for (var key in obj) {
-      o[key] = obj[key];
-    }
-    return o;
+    return $.extend(true, {}, obj);
   };
 
   // turns an object into an array of its elements
