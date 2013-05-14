@@ -204,8 +204,6 @@
 		},
 		
 		setValue: function(newColor) {
-                console.log('shit');
-                console.log(newColor);
 			this.color = new Color(newColor);
 			this.picker.find('i')
 				.eq(0).css({left: this.color.value.s*100, top: 100 - this.color.value.b*100}).end()
@@ -347,7 +345,7 @@
 		}
 	}
 
-	$.fn.colorpicker = function ( option ) {
+	$.fn.colorpicker = function ( option, value ) {
 		return this.each(function () {
 			var $this = $(this),
 				data = $this.data('colorpicker'),
@@ -355,7 +353,7 @@
 			if (!data) {
 				$this.data('colorpicker', (data = new Colorpicker(this, $.extend({}, $.fn.colorpicker.defaults,options))));
 			}
-			if (typeof option === 'string') data[option]();
+			if (typeof option === 'string') data[option](value);
 		});
 	};
 

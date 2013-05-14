@@ -129,17 +129,19 @@ Main = (function() {
         return {r: rgb[0], g: rgb[1], b: rgb[2]};
       },
 
-      rgbToHexString: function(rgb) {
-        var toHex = function(c) {
-          var hex = c.toString(16);
-          return hex.length == 1 ? "0" + hex : hex;
-        };
-
+      rgbToString: function(color) {
+        var rgb = Util.clone(color);
         for (var id in rgb) {
           rgb[id] = Math.round(rgb[id] * 255);
         }
+        return "rgb("+rgb.r+","+rgb.g+","+rgb.b+")";
+      },
 
-        return "#" + toHex(rgb.r*255) + toHex(rgb.g*255) + toHex(rgb.b*255);
+      setColorInput: function(id, rgb) {
+        var rgbString = this.rgbToString(rgb);
+        this.$("#" + id).val(rgbString);
+        this.$("#" + id).parent().attr('data-color', rgbString);
+        this.$("#" + id).parent().colorpicker('setValue', rgbString);
       },
 
       gatherVectorInput: function(id) {
@@ -214,11 +216,7 @@ Main = (function() {
           var editIcon = $('<i class="icon-pencil"></i>');
           editIcon.data('name', item.name);
           treeItem.append(editIcon);
-          editIcon.on('click', (function(event) {
-            event.stopPropagation();
-            var itemName = $(event.target).data('name');
-            this.editItem(itemName);
-          }).bind(this));
+          editIcon.on('click', this.onEditClick.bind(this));
         }
 
         // make sure that pencil icons stay floating to the right
@@ -229,6 +227,12 @@ Main = (function() {
         }).bind(this));
 
         return this;
+      },
+
+      onEditClick: function(event) {
+        event.stopPropagation();
+        var itemName = $(event.target).data('name');
+        this.editItem(itemName);
       },
 
       removeSelectedItems: function() {
@@ -275,13 +279,12 @@ Main = (function() {
         this.renderTree();
       },
 
-      // called when the edit icon is clicked
+      // called when the edit icon is clicked for lights
       editItem: function(itemName) {
         var light = this.addedItems[itemName].light;
         this.$('#inputLightName').val(light.name);
         this.setVectorInput('inputLightPos', light.position);
-
-        this.$('#inputLightColor').parent().colorpicker('setValue', 'rgb(255,255,255)');
+        this.setColorInput('inputLightColor', light.color);
         this.$('#inputLightIntensity').val(light.intensity);
       }
     });
@@ -325,6 +328,37 @@ Main = (function() {
 
       getMaterialsTab: function() {
         return mainViews[Router.HOME].getCreateSceneDialog().getMaterialsTab();
+      },
+
+      // called when the edit icon is clicked for objects
+      editItem: function(itemName) {
+        var object = this.addedItems[itemName].object;
+        this.$('#inputObjectName').val(object.name);
+
+        // set type
+        var type = object.type;
+        var selectBox = this.$(".object-select");
+        selectBox.select('selectByValue', type);
+        this.onObjectSelect(null, selectBox.select('selectedItem'));
+
+        // set form based on properties
+        var objectProperties = this.itemTypes[type].properties;
+        for (var propertyName in objectProperties) {
+          var property = objectProperties[propertyName];
+          var value = object[propertyName];
+          if (property.type === 'vector') {
+            this.setVectorInput(propertyName, value);
+          } else if (property.type === 'material-select') {
+            this.$("#" + propertyName).select('selectByValue', value);
+          } else {
+            this.$("#" + propertyName).val(value);
+          }
+        }
+
+        // set transformations
+        this.$('#scale').val(object.scale.x);
+        this.setVectorInput('rotate', object.rotate);
+        this.setVectorInput('translate', object.translate);
       },
 
       onAddClick: function(event) {
@@ -499,6 +533,30 @@ Main = (function() {
 
         $('.preview-material-popup').show();
         RayTracer.renderImage(rtScene);
+      },
+
+      // called when the edit icon is clicked for materials 
+      editItem: function(itemName) {
+        var material = this.addedItems[itemName].material;
+        this.$('#inputMatName').val(material.name);
+        
+        // set type
+        var type = material.type;
+        var selectBox = this.$(".material-select");
+        selectBox.select('selectByValue', type);
+        this.onMaterialSelect(null, selectBox.select('selectedItem'));
+
+        // set form based on properties
+        var materialProperties = this.itemTypes[type].properties;
+        for (var propertyName in materialProperties) {
+          var property = materialProperties[propertyName];
+          var value = material[propertyName];
+          if (property.type === 'color') {
+            this.setColorInput(propertyName, value);
+          } else {
+            this.$("#" + propertyName).val(value);
+          }
+        }
       },
 
       onAddClick: function(event) {
