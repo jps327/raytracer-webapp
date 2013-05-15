@@ -77,7 +77,7 @@ Main = (function() {
           var data = $.extend(true, {}, this._dataMap);
           var newData = [];
           for (var name in data) {
-            if (data[name].parent === NO_PARENT) {
+            if (!data[name].parent || data[name].parent === NO_PARENT) {
               newData.push(data[name]);
             }
           }
@@ -303,16 +303,7 @@ Main = (function() {
     // of the possible types and their properties
     var LightCreatorView = BaseCreatorView.extend({
       el: $('.lights-tab'),
-      addedItems: {
-        rofl: {name: 'rofl', type: 'folder', light: {},
-                parent: '', children: ['yar']},
-        harp: {name: 'harp', type: 'folder', light: {},
-              children: [ 'b' ]},
-        yar: {name: 'yar', type: 'item', light: {}, parent: 'rofl'},
-        a: {name: 'a', type: 'item', light: {}},
-        b: {name: 'b', type: 'folder', light: {}, parent: 'harp', children: ['c']},
-        c: {name: 'c', type: 'item', light: {}, parent: 'b'},
-      },
+      addedItems: {},
 
       events: {
         'click .btn-add-light' : 'onAddClick',
@@ -1051,14 +1042,43 @@ Main = (function() {
         return materials;
       },
 
+      objectItemToSceneObject: function(objectItem, allObjectItems) {
+        var object = objectItem.object;
+        object.objects = [];
+        if (objectItem.children) {
+          for (var i = 0; i < objectItem.children.length; i++) {
+            var childName = objectItem.children[i];
+            var childItem = allObjectItems[childName];
+            var childObject = this.objectItemToSceneObject(childItem, allObjectItems);
+            console.log(childObject);
+            object.objects.push(childObject);
+          }
+        }
+        return Util.clone(object);
+      },
+
       gatherObjects: function() {
         // TODO: handle grouping
         var objects = [];
         var addedObjects = this.getObjectsTab().getAddedItems();
+        var rootObjectItems = [];
+        for (var objectName in addedObjects) {
+          if (addedObjects[objectName].parent === NO_PARENT) {
+            rootObjectItems.push(addedObjects[objectName]);
+          }
+        }
+
+        for (var i = 0; i < rootObjectItems.length; i++) {
+          var rootObjectItem = rootObjectItems[i];
+          objects.push(this.objectItemToSceneObject(rootObjectItem, addedObjects));
+        }
+
+        /*
         for (var objectName in addedObjects) {
           var object = addedObjects[objectName].object;
           objects.push(Util.clone(object));
         }
+        */
         return objects;
 
         /*
