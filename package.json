@@ -4,7 +4,7 @@
   "scripts": {
     "start": "app.js"
   },
-  "version": "0.0.0",
+  "version": "0.0.0-7",
   "engines": {
     "node": "0.8.x"
   },
@@ -12,6 +12,9 @@
     "express": "*",
     "socket.io": "*",
     "pngjs": "*",
-    "mongoose": "*"
+    "mongoose": "*",
+    "node-uuid": "1.4.x",
+    "request": "2.21.x",
+    "hbs": "*"
   }
 }
