@@ -1121,9 +1121,17 @@ var RayTracer = (function() {
     this.surfaces = [];
     this.lights = [];
     this.image = new RTImage(width, height);
+    this.samples = 1; // number of samples to use for anti-aliasing
   };
 
   extendProperties(Scene.prototype, {
+    getSamples: function() {
+      return this.samples;
+    },
+    setSamples: function(ns) {
+      this.samples = ns;
+    },
+
     getImage: function() {
       return this.image;
     },
@@ -1332,12 +1340,23 @@ var RayTracer = (function() {
     var t = cam.t;
     var nx = image.getWidth();
     var ny = image.getHeight();
+    var ns = scene.getSamples(); // number of samples for anti-aliasing
 
-    var u = l + ((r-l)*(x + 0.5))/nx;
-    var v = b + ((t-b)*(y + 0.5))/ny;
+    var finalColor = $C();
 
-    var ray = cam.genRayOfUV(u, v);
-    var color = shadeRay(scene, ray, {});
+    for (var dx = -(ns-1)/2; dx <= (ns-1)/2; dx++) {
+      for (var dy = -(ns-1)/2; dy <= (ns-1)/2; dy++) {
+        var ix = x + dx/ns;
+        var iy = y + dy/ns;
+        var u = l + ((r-l)*(ix + 0.5))/nx;
+        var v = b + ((t-b)*(iy + 0.5))/ny;
+
+        var ray = cam.genRayOfUV(u, v);
+        var color = shadeRay(scene, ray, {});
+        finalColor.add(color);
+      }
+    }
+
     return color.gammaCorrect(2.2).clampColor();
   };
 

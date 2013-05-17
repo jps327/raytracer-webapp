@@ -6,12 +6,17 @@ var PNG = require('pngjs').PNG;
 
 var scenes = {}; // scenes being worked on. Maps sceneID -> RTScene
 
+var TOLERANCE_TIME = 5*1000; // time we wait before reassigning work
+
 // Job Class
 // @param int id - job identifier
 // @param array pixels - a pixel is a map {x, y}
-var Job = function(id, pixels) {
+var Job = function(id, startPixelIndex, endPixelIndex) {
   this.id = id;
-  this.pixels = pixels;
+  this.startPixelIndex = startPixelIndex;
+  this.endPixelIndex = endPixelIndex;
+//  this.pixels = pixels;
+  this.workingClients = [];
 };
 
 Job.CHUNK_SIZE = 2500;
@@ -20,12 +25,29 @@ Job.prototype.getID = function() {
   return this.id;
 };
 
+Job.prototype.getWorkingClients = function() {
+  return this.workingClients;
+};
+
+Job.prototype.addWorkingClient = function(client) {
+  this.workingClients.push(client);
+};
+
+Job.prototype.clearWorkingClients = function() {
+  this.workingClients = [];
+};
+
 Job.prototype.getPixels = function() {
   return this.pixels;
 };
 
 Job.prototype.toJSON = function() {
-  return { id: this.id, pixels: this.pixels };
+  return {
+    id: this.id,
+    startPixelIndex: this.startPixelIndex,
+    endPixelIndex: this.endPixelIndex
+  };
+//  return { id: this.id, pixels: this.pixels };
 };
 
 // RTScene Class
@@ -59,15 +81,15 @@ var RTScene = function(id, width, height) {
   this.createdFinishedImage = false;
 };
 
-RTScene.indexToPixel = function() {
+RTScene.indexToPixel = function(i) {
   return {
-    x: i % width,
-    y: Math.floor(i / width)
+    x: i % this.width,
+    y: Math.floor(i / this.width)
   };
 };
 
 RTScene.pixelToIndex = function(pixel) {
-  return pixel.x + pixel.y*width;
+  return pixel.x + pixel.y*this.width;
 };
 
 // Add the client to this scene. Generate an identifier for
@@ -88,9 +110,16 @@ RTScene.prototype.addClient = function(userAcid, socket, callback) {
   }
 
   this.connectedClients[clientID] = {
-    job: null, // what job the client is currently working on
-    socket: socket, // the socket holding this client's connection
-    speed: null, // TODO: keep track of if client is slow
+    id: clientID,
+
+    // what job the client is currently working on
+    job: null,
+
+    // the socket holding this client's connection
+    socket: socket,
+
+    // when slowTimer goes off, we add this client's work back to the queue
+    slowTimer: null,
   };
 
   callback(this, clientID);
@@ -113,22 +142,29 @@ RTScene.prototype.createJobs = function() {
   var jobID = 0;
   var chunk = [];
   var currentChunkSize = 0;
-  for (var y = 0; y < this.height; y++) {
-    for (var x = 0; x < this.width; x++) {
-      chunk.push({ x: x, y: y});
-      currentChunkSize += 1;
-      if (currentChunkSize === Job.CHUNK_SIZE) {
-        this.allJobs[jobID] = new Job(jobID, chunk);
-        chunk = [];
-        currentChunkSize = 0;
-        jobID += 1;
-      }
+  var startPixelIndex = 0;
+
+  for (var i = 0; i < this.height * this.width; i++) {
+    currentChunkSize += 1;
+    if (currentChunkSize === Job.CHUNK_SIZE) {
+      this.allJobs[jobID] = new Job(
+        jobID,
+        startPixelIndex,
+        startPixelIndex + currentChunkSize
+      );
+      currentChunkSize = 0;
+      jobID += 1;
+      startPixelIndex = i+1;
     }
   }
 
   // add the last chunk of pixels in case it didn't make it to Job.CHUNK_SIZE
   if (currentChunkSize > 0) {
-    this.allJobs[jobID] = new Job(jobID, chunk);
+    this.allJobs[jobID] = new Job(
+      jobID,
+      startPixelIndex,
+      startPixelIndex + currentChunkSize
+    );
   }
 };
 
@@ -157,6 +193,17 @@ RTScene.prototype.assignJobToClient = function(clientID, socket) {
         sceneID: this.id,
         job: client.job.toJSON(),
       });
+
+      // add the client to the job to keep track of who is working on it
+      job.addWorkingClient(client);
+
+      // begin the clients timer
+      client.slowTimer = setTimeout((function() {
+        // add the slow client's job back to the queue so it can
+        // get picked up by someone else
+        this.pushJob(job);
+      }).bind(this), TOLERANCE_TIME);
+
       return true;
     }
   }
@@ -164,9 +211,27 @@ RTScene.prototype.assignJobToClient = function(clientID, socket) {
 };
 
 // Returns true if job results are stored successfully, false otherwise.
-RTScene.prototype.storeJobResults = function(jobID, results) {
+RTScene.prototype.storeJobResults = function(clientID, jobID, results) {
   if (this.allJobs[jobID]) { // if we got the results for a valid job
+    if (this.connectedClients[clientID]) {
+      clearTimeout(this.connectedClients[clientID].slowTimer);
+    }
     this.jobResults[jobID] = results;
+
+    // now loop through all of the other clients that were working on this job
+    // and assign them new jobs
+    var job = this.allJobs[jobID];
+    var workingClients = job.getWorkingClients();
+    for (var i = 0; i < workingClients.length; i++) {
+      var workingClient = workingClients[i];
+      if (workingClient.job.getID() === jobID) {
+        if (workingClient.id !== clientID) {
+          clearTimeout(workingClient.slowTimer);
+          this.assignJobToClient(workingClient.id, workingClient.socket);
+        }
+      }
+    }
+
     return true;
   }
   return false;
@@ -330,8 +395,8 @@ io.sockets.on('connection', function(socket) {
       return;
     }
 
-    // store results
-    scene.storeJobResults(jobID, pixels);
+    // store this client's results
+    scene.storeJobResults(clientID, jobID, pixels);
 
     // assign a new job to this client
     var assignedJob = scene.assignJobToClient(clientID, socket);

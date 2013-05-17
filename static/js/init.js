@@ -52,10 +52,18 @@ var Util = (function() {
     return arr;
   };
 
+  var indexToPixel = function(i, width) {
+    return {
+      x: i % width,
+      y: Math.floor(i / width)
+    };
+  };
+
   return {
     clone: clone,
     objectToArray: objectToArray,
     objectToKeyArra: objectToKeyArray,
+    indexToPixel: indexToPixel,
   };
 })();
 

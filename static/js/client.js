@@ -82,18 +82,27 @@ Client = (function() {
       return;
     }
 
-    var scene = sceneConnections[sceneID].scene;
+    var scene = sceneConnection.scene;
 
     console.log("GOT ASSIGNED A JOB FOR " + sceneID);
     console.log(job);
 
     var jobID = job.id;
-    var pixels = job.pixels;
+    var startPixelIndex = job.startPixelIndex;
+    var endPixelIndex = job.endPixelIndex;
     var results = [];
 
+    sceneConnection.currentJobID = jobID;
+
     // perform ray trace on given pixels
-    for (var i = 0; i < pixels.length; i++) {
-      var p = pixels[i];
+    var imgWidth = scene.getImage().getWidth();
+    for (var i = startPixelIndex; i < endPixelIndex; i++) {
+      if (jobID !== sceneConnection.currentJobID) {
+        // if at any point we received a new job assignment,
+        // stop working on this
+        return;
+      }
+      var p = Util.indexToPixel(i, imgWidth);
       var color = RayTracer.renderPixel(scene, p.x, p.y);
       results.push({
         x: p.x,
@@ -105,7 +114,7 @@ Client = (function() {
     }
 
     socket.emit('jobResult', {
-      clientID: sceneConnections[sceneID].clientID,
+      clientID: sceneConnection.clientID,
       sceneID: sceneID,
       jobID: jobID,
       pixels: results,
