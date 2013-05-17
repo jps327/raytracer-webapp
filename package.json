@@ -12,6 +12,7 @@
     "express": "*",
     "socket.io": "*",
     "pngjs": "*",
-    "mongoose": "*"
+    "mongoose": "*",
+    "node-uuid" : "*",
   }
 }
