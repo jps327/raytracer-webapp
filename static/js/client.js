@@ -17,6 +17,10 @@ Client = (function() {
   // scenes this client is working on paired with their respective clientID
   var sceneConnections = {};
 
+  // amount of time to wait after results are sent before requesting a new job
+  var TOLERANCE_TIME = 10*1000;
+  var jobRequestTimer = null;
+
   // Client-server interaction
   var socket = io.connect();
 
@@ -75,6 +79,8 @@ Client = (function() {
   });
 
   socket.on('jobAssignment', function(data) {
+    clearTimeout(jobRequestTimer);
+
     var sceneID = data.sceneID;
     var job = data.job;
     var sceneConnection = sceneConnections[sceneID];
@@ -119,6 +125,13 @@ Client = (function() {
       jobID: jobID,
       pixels: results,
     });
+
+    jobRequestTimer = setTimeout(function() {
+      socket.emit('jobRequest', {
+        clientID: sceneConnection.clientID,
+        sceneID: sceneID
+      });
+    }, TOLERANCE_TIME);
   });
 
   socket.on('finishedImage', function(data) {

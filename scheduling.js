@@ -410,6 +410,13 @@ io.sockets.on('connection', function(socket) {
     }
   });
 
+  // client is requesting a new job
+  socket.on('jobRequest', function(data) {
+    var clientID = data.clientID;
+    var scene = scenes[data.sceneID];
+    scene.assignJobToClient(clientID, socket);
+  });
+
   // disconnection because the client clicked on 'disconnect'
   socket.on('disconnectFromScene', function(data) {
     var clientID = data.clientID;
