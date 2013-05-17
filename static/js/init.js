@@ -116,6 +116,7 @@ var Init = (function() {
         // successful log in
         console.log("Successful login!");
         getCreateSceneButton().off('click', login);
+        $('.brand').off('click', login);
       }
     }, {scope: 'email'});
   };
@@ -156,6 +157,7 @@ var Init = (function() {
     } else {
       console.log("Not authenticated");
       getCreateSceneButton().on('click', login);
+      $('.brand').on('click', login);
     }
   };
 
