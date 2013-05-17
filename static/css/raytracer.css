@@ -81,7 +81,21 @@
 
 .createSceneModal .tree .icon-pencil {
   opacity: 0.5;
+}
+
+.createSceneModal .tree .tree-item .icon-pencil {
   float: right;
+}
+
+.createSceneModal .tree .tree-folder .icon-pencil {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.fuelux .createSceneModal .tree .tree-item,
+.fuelux .createSceneModal .tree .tree-folder {
+  position: relative;
 }
 
 .preview-scene-popup,

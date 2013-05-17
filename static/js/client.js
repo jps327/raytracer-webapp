@@ -113,12 +113,6 @@ Client = (function() {
   });
 
   socket.on('finishedImage', function(data) {
-    // TODO: display the finished image correctly
-    // if i am in gallery view, i want the gallery item to update immediately
-    // i want the gallery items to refresh every 5 seconds as well
-    // if i am in scene view, i want the scene to update immediately
-    // otherwise request the scene filename every time we enter it to see if
-    // it is ready
     var sceneID = data.sceneID;
 
     // update gallery item image

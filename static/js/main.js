@@ -125,7 +125,7 @@ Main = (function() {
       },
 
       clearAddedItems: function() {
-        this.addedItems = [];
+        this.addedItems = {};
       },
 
       addItem: function(item) {
@@ -224,6 +224,36 @@ Main = (function() {
         return this.$(".added-" + this.creatorType + "s-tree");
       },
 
+      addEditIcons: function() {
+        this.$('.icon-pencil').remove();
+
+        // link each DOM tree-element to its name
+        var folderNameElements = this.$(".tree-folder-name:not(:first)");
+        var itemNameElements = this.$(".tree-item-name:not(:first)");
+        _.each(folderNameElements, function(elt) {
+          var e = $(elt);
+          e.parent().parent().data('name', e.text());
+        });
+
+        _.each(itemNameElements, function(elt) {
+          var e = $(elt);
+          e.parent().data('name', e.text());
+        });
+
+        // add the edit-icons and link them to their respective items
+        var addedItems = this.getAddedItems();
+        var treeItems = this.$(".tree-item:not(:first)," +
+            ".tree-folder:not(:first)");
+        for (var i = 0; i < treeItems.length; i++) {
+          var treeItem = $(treeItems[i]);
+          var item = addedItems[treeItem.data('name')];
+          var editIcon = $('<i class="icon-pencil"></i>');
+          editIcon.data('name', item.name);
+          treeItem.append(editIcon);
+          editIcon.on('click', this.onEditClick.bind(this));
+        }
+      },
+
       renderTree: function() {
         var addedItemsEl = this.$(".added-"+this.creatorType+"s");
         var treeTemplate = _.template($('#t-item-folder-tree').html());
@@ -238,17 +268,7 @@ Main = (function() {
           multiSelect: true,
         });
 
-        // add the edit-icons and link them to their respective items
-        var addedItems = this.getAddedItemsAsArray();
-        var treeItems = this.$('.tree-item:not(:first)');
-        for (var i = 0; i < treeItems.length; i++) {
-          var item = addedItems[i];
-          var treeItem = $(treeItems[i]);
-          var editIcon = $('<i class="icon-pencil"></i>');
-          editIcon.data('name', item.name);
-          treeItem.append(editIcon);
-          editIcon.on('click', this.onEditClick.bind(this));
-        }
+        this.addEditIcons();
 
         // make sure that pencil icons stay floating to the right
         // (fuelux's Tree component keeps trying to move it back to the left)
@@ -266,6 +286,13 @@ Main = (function() {
         this.isEditing = true;
         this.itemBeingEdited = itemName;
 
+        // change form heading text
+        var tabTitle = this.$("h5");
+        if (!tabTitle.data('oldTitle')) {
+          tabTitle.data('oldTitle', tabTitle.text());
+        }
+        tabTitle.text("Editing " + itemName);
+
         // change form buttons
         this.$(".btn-add-"+this.creatorType).val('Save');
         this.$(".btn-add-"+this.creatorType).addClass('btn-success');
@@ -277,6 +304,11 @@ Main = (function() {
 
       onCancelEditClick: function(event) {
         this.isEditing = false;
+
+        // Set form heading text back to old text
+        var tabTitle = this.$("h5");
+        tabTitle.text(tabTitle.data('oldTitle'));
+        tabTitle.data('oldTitle', undefined);
 
         // change form buttons back
         this.$(".btn-add-"+this.creatorType).val('Add');
@@ -358,6 +390,7 @@ Main = (function() {
         'click .btn-add-object' : 'onAddClick',
         'click .btn-cancel-object' : 'onCancelEditClick',
         'click .btn-remove-selected-objects' : 'removeSelectedItems',
+        'opened .tree' : 'onOpenTreeFolder',
       },
 
       itemTypes: {
@@ -419,7 +452,8 @@ Main = (function() {
           var value = object[propertyName];
           if (property.type === 'vector') {
             this.setVectorInput(propertyName, value);
-          } else if (property.type === 'material-select') {
+          } else if (property.type === 'material-select' ||
+              property.type === 'group-select') {
             this.$("#" + propertyName).select('selectByValue', value);
           } else {
             this.$("#" + propertyName).val(value);
@@ -430,6 +464,10 @@ Main = (function() {
         this.$('#scale').val(object.scale.x);
         this.setVectorInput('rotate', object.rotate);
         this.setVectorInput('translate', object.translate);
+      },
+
+      onOpenTreeFolder: function(event) {
+        this.addEditIcons();
       },
 
       onAddClick: function(event) {
@@ -472,14 +510,15 @@ Main = (function() {
         }
 
         // start out group
-        if (object.type === 'group' && itemDoesntExist) {
-          itemToAdd.children = [];
+        if (object.type === 'group') {
+          console.log(this.getAddedItems()[object.name]);
+          itemToAdd.children = itemDoesntExist ?
+            [] : this.getAddedItems()[object.name].children;
         }
 
         if (itemToAdd.parent !== NO_PARENT) {
           // find this item's parent and remove this item
           var parentGroup = this.getAddedItems()[itemToAdd.parent];
-          console.log(parentGroup.children);
           parentGroup.children = _.reject(parentGroup.children,
               function(childName) { return childName === itemToAdd.name; });
         }
@@ -960,8 +999,34 @@ Main = (function() {
             materialsTab.render();
 
             // set objects
+            // TODO: set objects with children and proper groups
             var objectsTab = this.getObjectsTab();
             objectsTab.clearAddedItems();
+//            var objectsToAdd = _.map(objects, function(o) { return o; });
+            var objectsToAdd = $.extend(true, [], objects);
+
+            for (var i = 0; i < objectsToAdd.length; i++) {
+              var obj = objectsToAdd[i];
+              var children = [];
+
+              // add all children to objectsToAdd array
+              _.each(obj.objects, function(o) {
+                o.parent = obj.name;
+                objectsToAdd.push(o);
+                children.push(o.name);
+              });
+
+              // add this object to the objects tab
+              objectsTab.addItem({
+                name: obj.name,
+                object: obj,
+                type: obj.type === 'group' ? 'folder' : 'item',
+                children: children,
+                parent: obj.parent ? obj.parent : NO_PARENT,
+              });
+            }
+
+            /*
             _.each(objects, function(object) {
               objectsTab.addItem({
                 name: object.name,
@@ -969,6 +1034,7 @@ Main = (function() {
                 object: object
               });
             });
+            */
             objectsTab.render();
 
           }).bind(this),
