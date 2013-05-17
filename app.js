@@ -240,6 +240,7 @@ app.post('/api/createScene', function(req, res) {
     objects: scene.objects,
     height: scene.height,
     width: scene.width,
+    samples: scene.samples,
     published: true,
     startedRendering: false,
     finishedRendering: false,
@@ -303,7 +304,7 @@ app.post('/api/getSceneRenderingData', function(req, res) {
   var sceneID = req.param('sceneID');
   Scene
     .findOne({ '_id': sceneID })
-    .select({width: 1, height: 1, camera: 1, lights: 1, materials: 1, objects: 1})
+    .select({width: 1, height: 1, samples: 1, camera: 1, lights: 1, materials: 1, objects: 1})
     .exec(function(err, scene) {
       if (err || !scene) {
         console.log("Could not find scene.");

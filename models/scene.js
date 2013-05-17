@@ -15,6 +15,7 @@ var SceneSchema = new Schema({
   objects: [Schema.Types.Mixed], // array of objects
   height: Number,
   width: Number,
+  samples: Number,
 
   published: {type: Boolean, default: false}, // false if this is a saved scene not yet published to gallery
   startedRendering: {type: Boolean, default: false},

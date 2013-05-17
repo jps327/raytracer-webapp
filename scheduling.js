@@ -6,7 +6,7 @@ var PNG = require('pngjs').PNG;
 
 var scenes = {}; // scenes being worked on. Maps sceneID -> RTScene
 
-var TOLERANCE_TIME = 5*1000; // time we wait before reassigning work
+var TOLERANCE_TIME = 30*1000; // time we wait before reassigning work
 
 // Job Class
 // @param int id - job identifier

@@ -689,6 +689,7 @@ Main = (function() {
         var scene = {
           width: width,
           height: height,
+          samples: 1,
           camera: camera,
           canvasID: canvasID,
           lights: [ light ],
@@ -914,6 +915,7 @@ Main = (function() {
         var width = 300;
         var height = 200;
 
+        scene.samples = 1;
         scene.canvasID = canvasID;
         scene.width = width;
         scene.height = height;
@@ -958,14 +960,16 @@ Main = (function() {
             var scene = res.scene;
             var width = scene.width;
             var height = scene.height;
+            var samples = scene.samples;
             var camera = scene.camera;
             var lights = scene.lights;
             var materials = scene.materials;
             var objects = scene.objects;
 
-            // set width and height 
+            // set width, height, and samples
             this.$('#inputWidth').val(width);
             this.$('#inputHeight').val(height);
+            this.$('#inputAntiAliasing').val(samples);
 
             // set camera properties
             this.setVectorInput('inputEye', camera.eye);
@@ -1043,11 +1047,13 @@ Main = (function() {
       },
 
       getSceneAsJSON: function() {
+        // gather general properties
         var title = this.$('#inputTitle').val();
         var author = this.$('#inputAuthor').val();
         var thumbnailURL = this.$('#inputThumbnailURL').val();
         var width = this.$('#inputWidth').val();
         var height = this.$('#inputHeight').val();
+        var aaSamples = this.$('#inputAntiAliasing').val();
 
         return {
           title: title,
@@ -1055,6 +1061,7 @@ Main = (function() {
           thumbnailURL: thumbnailURL,
           width: width,
           height: height,
+          samples: aaSamples, // anti-aliasing samples
           camera: this.gatherCamera(),
           lights: this.gatherLights(),
           materials: this.gatherMaterials(),

@@ -1126,10 +1126,11 @@ var RayTracer = (function() {
 
   extendProperties(Scene.prototype, {
     getSamples: function() {
-      return this.samples;
+      return this.samples ? this.samples : 1;
     },
     setSamples: function(ns) {
-      this.samples = ns;
+      this.samples = ns ? Math.round(Math.sqrt(ns)) : 1;
+      return this;
     },
 
     getImage: function() {
@@ -1343,7 +1344,6 @@ var RayTracer = (function() {
     var ns = scene.getSamples(); // number of samples for anti-aliasing
 
     var finalColor = $C();
-
     for (var dx = -(ns-1)/2; dx <= (ns-1)/2; dx++) {
       for (var dy = -(ns-1)/2; dy <= (ns-1)/2; dy++) {
         var ix = x + dx/ns;
@@ -1356,8 +1356,7 @@ var RayTracer = (function() {
         finalColor.add(color);
       }
     }
-
-    return color.gammaCorrect(2.2).clampColor();
+    return finalColor.scale(1/(ns*ns)).gammaCorrect(2.2).clampColor();
   };
 
   var renderImage = function(scene) {
@@ -1592,10 +1591,12 @@ var RayTracer = (function() {
   var createRenderableSceneFromJSON = function(jsonScene) {
     var width = parseFloat(jsonScene.width);
     var height = parseFloat(jsonScene.height);
+    var samples = parseFloat(jsonScene.samples);
 
     var scene = getSceneFromJSON(jsonScene);
     scene
       .setImageDimensions(width, height)
+      .setSamples(samples)
       .setTransform()
       .initializeAABB(); // prepares scene for rendering
     return scene;
@@ -1603,13 +1604,13 @@ var RayTracer = (function() {
 
   // creates a renderable scene to be rendered onto an html canvas
   var createRenderableCanvasSceneFromJSON = function(jsonScene) {
-    sanitizeNumericJSON(jsonScene);
-    sanitizeVectorJSON(jsonScene);
     var canvasID = jsonScene.canvasID;
+    var samples = parseFloat(jsonScene.samples);
 
     var scene = getSceneFromJSON(jsonScene);
     scene
       .setImageCanvas(canvasID)
+      .setSamples(samples)
       .setTransform()
       .initializeAABB(); // prepare scene for rendering
     return scene;
