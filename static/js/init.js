@@ -109,7 +109,8 @@ var Init = (function() {
     return $('.create-scene-button');
   };
 
-  var login = function() {
+  var login = function(event) {
+    event.stopPropagation();
     FB.login(function(response) {
       if (response.authResponse) {
         // successful log in
